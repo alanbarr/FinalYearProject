@@ -30,7 +30,7 @@ while True:
     print("Message Received:")
     print("data is: ", data)
     print("src_ip is: ", src_ip)
-    print("src_port is`: ", src_port)
+    print("src_port is: ", src_port)
 
     if data != MSG_EXP:
         print("Message text was not as expected.")
