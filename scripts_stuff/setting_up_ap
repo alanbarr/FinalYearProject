@@ -1,0 +1,4 @@
+files:
+    /etc/network/interfaces
+    /etc/hostapd/hostapd.conf
+    /etc/udhcpd.conf
