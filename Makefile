@@ -5,7 +5,7 @@
 
 # Compiler options here.
 ifeq ($(USE_OPT),)
-	# By default use -O0 -ggdb to enable sane debugging
+  # By default use -O0 -ggdb to enable sane debugging
   USE_OPT = -O0 -ggdb -fomit-frame-pointer
 endif
 
@@ -65,7 +65,7 @@ CHIBIOS = /home/fyp/fyp/ChibiOS-RT
 LDSCRIPT=$(CHIBIOS)/os/ports/GCC/ARMCMx/STM32L1xx/ld/STM32L152xC.ld 
 #LDSCRIPT= $(PORTLD)/STM32L152xC.ld
 
-CC3000_CHIBIOS_DIR=../CC3000_ChibiosRT
+CC3000_CHIBIOS_DIR=../ChibiOS_CC3000_SPI
 
 # Core build files
 include $(CHIBIOS)/boards/ST_32L152CDISCOVERY/board.mk
@@ -73,7 +73,7 @@ include $(CHIBIOS)/os/hal/platforms/STM32L1xx/platform.mk
 include $(CHIBIOS)/os/hal/hal.mk
 include $(CHIBIOS)/os/ports/GCC/ARMCMx/STM32L1xx/port.mk
 include $(CHIBIOS)/os/kernel/kernel.mk
-include $(CC3000_CHIBIOS_DIR)/CC3000.mk
+include $(CC3000_CHIBIOS_DIR)/cc3000.mk
 
 
 # Uncomment this to include the test code in the build
@@ -87,10 +87,11 @@ CSRC = $(PORTSRC) \
        $(HALSRC) \
        $(PLATFORMSRC) \
        $(BOARDSRC) \
-       $(CHIBIOS)/os/various/evtimer.c \
-       $(CHIBIOS)/os/various/syscalls.c \
+       $(CHIBIOS)/os/various/evtimer.c   \
+       $(CHIBIOS)/os/various/syscalls.c  \
+       $(CHIBIOS)/os/various/chprintf.c  \
        $(wildcard src/*.c)\
-	   $(CC3000SRC)\
+       $(CC3000SRC)\
        main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
@@ -123,7 +124,7 @@ ASMSRC = $(PORTASM)
 INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
          $(HALINC) $(PLATFORMINC) $(BOARDINC) \
          $(CHIBIOS)/os/various \
-		 $(CC3000INC)
+         $(CC3000INC)
 
 #
 # Project, sources and paths
