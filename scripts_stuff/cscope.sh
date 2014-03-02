@@ -3,6 +3,7 @@ chibios_path=${project_root}/ChibiOS-RT
 fyp_path=${project_root}/fyp
 cc3000_path=${project_root}/ChibiOS_CC3000_SPI
 sys_path=/usr/arm-none-eabi/
+clarity_path=${project_root}/clarity_core
 
 files_list=$project_root/cscope.files
 
@@ -70,12 +71,17 @@ search_sys ()
     get_c_files $sys_path $files_list
 }
 
+search_clarity ()
+{
+    get_c_files $clarity_path $files_list
+}
 
 rm -f $files_list
 search_chibios
 search_fyp
 search_cc3000
 search_sys
+search_clarity
 cscope -b -k
 
 
