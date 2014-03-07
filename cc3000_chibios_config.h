@@ -70,13 +70,13 @@
 /** @brief EXT mode being used for interrupt pin monitoring. */
 #define CHIBIOS_CC3000_IRQ_EXT_MODE         EXT_MODE_GPIOB
 /** @brief Pin being used for interrupt pin monitoring. */
-#define CHIBIOS_CC3000_IRQ_PAD              11
+#define CHIBIOS_CC3000_IRQ_PAD              9
 
 /**** WLAN Pin / VBAT_SW_EN ****/
 /** @brief Port being used for WLAN Enable control. */
 #define CHIBIOS_CC3000_WLAN_EN_PORT         GPIOB
 /** @brief Pin being used for WLAN Enable control. */
-#define CHIBIOS_CC3000_WLAN_EN_PAD          10
+#define CHIBIOS_CC3000_WLAN_EN_PAD          8
 
 /**** SPI_DRIVER ****/
 /** @brief Port being used for communications to CC3000. */
@@ -103,7 +103,7 @@
 
 /**** Debug Helpers  ****/
 /**@brief Set to TRUE to enable basic debug print from the SPI Driver. */
-#define CHIBIOS_CC3000_DBG_PRINT_ENABLED    TRUE
+#define CHIBIOS_CC3000_DBG_PRINT_ENABLED    FALSE
 
 /**@brief Serial driver to use for debug print.
  * @details This must be configured before calling #cc3000ChibiosWlanInit().

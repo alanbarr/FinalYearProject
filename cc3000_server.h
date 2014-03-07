@@ -6,8 +6,7 @@
 
 uint32_t cc3000HttpServerKill(void);
 
-uint32_t cc3000HttpServerStart(controlInformation * control, httpInformation * http,
-                               Mutex * cc3000ApiMutex);
+uint32_t cc3000HttpServerStart(Mutex * cc3000ApiMutex);
 
 #endif /* __CC3000_SERVER_H__ */
 
