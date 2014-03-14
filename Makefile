@@ -66,8 +66,7 @@ LDSCRIPT=$(CHIBIOS)/os/ports/GCC/ARMCMx/STM32L1xx/ld/STM32L152xC.ld
 #LDSCRIPT= $(PORTLD)/STM32L152xC.ld
 
 CC3000_CHIBIOS_DIR=../ChibiOS_CC3000_SPI
-MPL3115A2_DIR=../ChibiOS_MPL3115A2
-TSL2561_DIR=../ChibiOS_TSL2561
+SENSORS_DIR=../ChibiOS_Sensors/
 CLARITY_DIR=../clarity_core
 
 # Core build files
@@ -77,8 +76,7 @@ include $(CHIBIOS)/os/hal/hal.mk
 include $(CHIBIOS)/os/ports/GCC/ARMCMx/STM32L1xx/port.mk
 include $(CHIBIOS)/os/kernel/kernel.mk
 include $(CC3000_CHIBIOS_DIR)/cc3000.mk
-include $(MPL3115A2_DIR)/mpl3115a2.mk
-include $(TSL2561_DIR)/tsl2561.mk
+include $(SENSORS_DIR)/sensors.mk
 include $(CLARITY_DIR)/clarity.mk
 
 
@@ -101,9 +99,6 @@ CSRC = $(PORTSRC) \
        $(MPL3115A2_SRC) \
        $(TSL2561_SRC) \
        $(CLARITY_SRC) \
-	   rtc_handling.c \
-	   cc3000_server.c \
-       main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
@@ -138,7 +133,8 @@ INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
          $(MPL3115A2_INC) \
          $(TSL2561_INC) \
          $(CLARITY_INC) \
-         $(CC3000INC)
+         $(CC3000INC)	\
+		 src
 
 #
 # Project, sources and paths

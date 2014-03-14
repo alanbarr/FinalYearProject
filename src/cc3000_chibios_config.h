@@ -95,7 +95,7 @@
 #define CHIBIOS_CC3000_IRQ_THD_AREA         512
 /** @brief Priority of the IRQ thread. Should be higher than the thread
  *         using the CC3000 API. */
-#define CHIBIOS_CC3000_IRQ_THD_PRIO         (NORMALPRIO + 1)
+#define CHIBIOS_CC3000_IRQ_THD_PRIO         (HIGHPRIO)
 
 /*****************************************************************************/
 /* Under ordinary circumstances, below here should not need to be altered.   */
@@ -103,7 +103,7 @@
 
 /**** Debug Helpers  ****/
 /**@brief Set to TRUE to enable basic debug print from the SPI Driver. */
-#define CHIBIOS_CC3000_DBG_PRINT_ENABLED    FALSE
+#define CHIBIOS_CC3000_DBG_PRINT_ENABLED    TRUE
 
 /**@brief Serial driver to use for debug print.
  * @details This must be configured before calling #cc3000ChibiosWlanInit().

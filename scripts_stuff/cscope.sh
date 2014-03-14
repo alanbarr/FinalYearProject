@@ -4,8 +4,7 @@ fyp_path=${project_root}/fyp
 cc3000_path=${project_root}/ChibiOS_CC3000_SPI
 sys_path=/usr/arm-none-eabi/
 clarity_path=${project_root}/clarity_core
-mpl_path=${project_root}/ChibiOS_MPL3115A2
-tsl_path=${project_root}/ChibiOS_TSL2561
+sensor_path=${project_root}/ChibiOS_Sensors
 
 
 files_list=$project_root/cscope.files
@@ -79,15 +78,12 @@ search_clarity ()
     get_c_files $clarity_path $files_list
 }
 
-search_mpl ()
+search_sensors ()
 {
-    get_c_files $mpl_path $files_list
+    get_c_files $sensor_path $files_list
 }
 
-search_tsl ()
-{
-    get_c_files $tsl_path $files_list
-}
+
 
 rm -f $files_list
 search_chibios
@@ -95,8 +91,7 @@ search_fyp
 search_cc3000
 search_sys
 search_clarity
-search_mpl
-search_tsl
+search_sensors
 cscope -b -k
 
 
