@@ -91,8 +91,8 @@ def http_server_start():
 def http_server_stop():
     global HTTP_SERVER_RUNNING
     global HTTP_SERVER_THREAD
-    print("Stopping server...")
     if HTTP_SERVER_THREAD is not None:
+        print("Stopping server...")
         HTTP_SERVER_RUNNING = False
         HTTP_SERVER_THREAD.join()
         HTTP_SERVER_THREAD = None

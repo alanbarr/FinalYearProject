@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 ################################################################################
 # Copyright (c) 2014, Alan Barr
 # All rights reserved.
@@ -32,7 +33,9 @@ class Cli(cmd.Cmd):
     prompt = "(SLC) "
 
     def do_server(self,str):
-        """Start or stop the HTTP server."""
+        """HTTP server control. Arguments:
+        'start' - start the server
+        'stop'  - stop ther server"""
         if str == "start":
             server.http_server_start()
         elif str == "stop":
@@ -49,21 +52,25 @@ class Cli(cmd.Cmd):
         pass
     
     def do_list(self,str):
-        """List devices or resources."""
+        """List devices or resources. Arguments:
+           'devices' - Lists all devices
+           <device> 'resources' - List all resources under device"""
         s = str.split()
         if len(s) == 1 and s[0] == "devices":
             devices = log_data.get_devices()
             for d in devices:
                 print(d)
-        elif len(s) == 2 and s[0] == "resources":
-            resources = log_data.get_device_resources(s[1])
+        elif len(s) == 2 and s[1] == "resources":
+            resources = log_data.get_device_resources(s[0])
             for r in resources:
                 print(r)
         else:
             print("Incorrect argument: ", str)
         
     def do_graph(self,str):
-        """Graph a resource."""
+        """Graph a resource. Argumments:
+           <device> - graph all resources known for device
+           <device resource> - graph particular resource from device"""
         s = str.split()
         if len(s) == 1:
             log_data.show_graph_device(s[0])

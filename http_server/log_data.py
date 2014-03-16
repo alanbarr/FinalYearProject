@@ -104,7 +104,7 @@ def show_graph_device_resource(device, resource):
 def show_graph_device(device):
     resources = get_device_resources(device)
     fig = pyplot.figure()
-    fig.suptitle("Graph of data from " + device)
+    fig.suptitle("Graph of " + device)
     ctr = 1
     axis = []
     for resource in resources:
