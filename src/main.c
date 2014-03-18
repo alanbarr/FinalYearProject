@@ -127,9 +127,9 @@ static uint32_t httpGetPressure(const clarityHttpRequestInformation * info,
     (void)temperature;
 #if 0
     if (RDY_OK != (i2cReturn = mplOneShotReadBarometer(&I2C_DRIVER,
-                                                           MPL3115A2_DEFAULT_ADDR,
-                                                           &pressure, 
-                                                           &temperature)))
+                                                       MPL3115A2_DEFAULT_ADDR,
+                                                       &pressure, 
+                                                       &temperature)))
     {
         return 1;
     }
@@ -286,19 +286,35 @@ void initaliseCC3000(void)
 
 }
 
+void deinitaliseCC3000(void)
+{
+    cc3000ChibiosShutdown();
+    palSetPadMode(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_NSS_PAD,
+                  PAL_MODE_UNCONNECTED);
+
+    palSetPadMode(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_SCK_PAD,
+                  PAL_MODE_UNCONNECTED);
+
+    palSetPadMode(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_MISO_PAD,
+                  PAL_MODE_UNCONNECTED);
+
+    palSetPadMode(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_MOSI_PAD,
+                  PAL_MODE_UNCONNECTED);
+
+    palSetPadMode(CHIBIOS_CC3000_IRQ_PORT, CHIBIOS_CC3000_IRQ_PAD,
+                  PAL_MODE_UNCONNECTED);
+
+    palSetPadMode(CHIBIOS_CC3000_WLAN_EN_PORT, CHIBIOS_CC3000_WLAN_EN_PAD,
+                  PAL_MODE_UNCONNECTED);
+}
+
 void cc3000Unresponsive(void)
 {
     PRINT("Clarity thinks CC3000 was unresponsive.", NULL);
 }
 
-
-int main(void)
+void initialiseHw(void)
 {
-    halInit();
-    chSysInit();
-
-    chMtxInit(&printMtx);
-
     /* Led for status */
     palClearPad(LED_PORT, LED_STATUS);
     palSetPadMode(LED_PORT, LED_STATUS, PAL_MODE_OUTPUT_PUSHPULL);
@@ -307,15 +323,12 @@ int main(void)
     palClearPad(LED_PORT, LED_ERROR);
     palSetPadMode(LED_PORT, LED_ERROR, PAL_MODE_OUTPUT_PUSHPULL);
  
-#if 1
     /* Serial for debugging */
     sdStart(&SERIAL_DRIVER, NULL);
     palSetPadMode(SERIAL_PORT, SERIAL_TX, PAL_MODE_ALTERNATE(7));
     palSetPadMode(SERIAL_PORT, SERIAL_RX, PAL_MODE_ALTERNATE(7));
-#endif
 
-#if 0
-    /* Pins for I2C */
+    /* I2C for sensors */
     palSetPadMode(I2C_PORT, I2C_SDA, PAL_MODE_ALTERNATE(4) | 
                                      PAL_STM32_OTYPE_OPENDRAIN |
                                      PAL_STM32_OSPEED_LOWEST);
@@ -323,66 +336,55 @@ int main(void)
                                      PAL_STM32_OTYPE_OPENDRAIN |
                                      PAL_STM32_OSPEED_LOWEST);
 
-    PRINT("About to configure I2C.", NULL);
-
     i2cObjectInit(&I2C_DRIVER);
 
     i2cConfig.op_mode = OPMODE_I2C;
     i2cConfig.duty_cycle = STD_DUTY_CYCLE;
     i2cConfig.clock_speed = 100000;
     
-    PRINT("About to start I2C.", NULL);
-
     i2cStart(&I2C_DRIVER, &i2cConfig);
-#endif
+}
+
+void deinitialiseHw(void)
+{
+    /* Led for status */
+    palSetPadMode(LED_PORT, LED_STATUS, PAL_MODE_UNCONNECTED);
+    
+    /* Led for error */
+    palSetPadMode(LED_PORT, LED_ERROR, PAL_MODE_UNCONNECTED);
+ 
+    /* Serial for debugging */
+    sdStop(&SERIAL_DRIVER);
+    palSetPadMode(SERIAL_PORT, SERIAL_TX, PAL_MODE_UNCONNECTED);
+    palSetPadMode(SERIAL_PORT, SERIAL_RX, PAL_MODE_UNCONNECTED);
+
+    /* I2C for sensors */
+    i2cStop(&I2C_DRIVER);
+    palSetPadMode(I2C_PORT, I2C_SDA, PAL_MODE_UNCONNECTED);
+    palSetPadMode(I2C_PORT, I2C_SCL, PAL_MODE_UNCONNECTED);
+
+}
+
+int main(void)
+{
+    halInit();
+    
+    chSysInit();
+
+    chMtxInit(&printMtx);
+
+    initaliseHw();
+
     initaliseCC3000();
+
     initaliseControl(&controlInfo);
+
     clarityInit(&cc3000ApiMutex, cc3000Unresponsive, &ap);
+
     clarityHttpServerStart(&controlInfo);
 
 #if 0
     rtcTest();
-#endif
-
-#if 0
-    while (1)
-    {
-        if (RDY_OK != (i2cReturn = mplOneShotReadBarometer(&I2C_DRIVER,
-                                                           MPL3115A2_DEFAULT_ADDR,
-                                                           &pressure, 
-                                                           &temperature)))
-        {
-            i2cErrorHandler();
-        }
-
-        PRINT("Pressure is: %x", (uint32_t) pressure);
-        PRINT("Temperature is: %x", (uint32_t) temperature);
-        
-        PRINT("Pressure is: %f", pressure);
-        PRINT("Temperature is: %f", temperature);
-
-        palSetPad(LED_PORT, LED_STATUS);
-        chThdSleep(MS2ST(500));
-        palClearPad(LED_PORT, LED_STATUS);
-    }
-
-    while (1)
-    {
-        if (RDY_OK != (i2cReturn = tslReadLuxConvertSleep(&I2C_DRIVER,
-                                                          TSL2561_ADDR_FLOAT,
-                                                          &lux)))
-        {
-            i2cErrorHandler();
-        }
-
-
-        PRINT("Lux is: %u\n", lux);
-
-        palSetPad(LED_PORT, LED_STATUS);
-        chThdSleep(1000);
-        palClearPad(LED_PORT, LED_STATUS);
-    }
-
 #endif
 
     while(1)
