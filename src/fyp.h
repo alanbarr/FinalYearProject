@@ -28,6 +28,7 @@
 #define __FYP_H__
 
 #include "ch.h"
+#include "hal.h"
 #include "chprintf.h"
 
 /* Serial  */
