@@ -27,6 +27,15 @@
 #include <stdint.h>
 #include <string.h>
 
+#define HOST 0 /* 1 for linux */
+
+#if HOST != 1
+#include "fyp.h"
+#else
+#include <stdio.h>
+#define PRINT(...) printf(__VA_ARGS__)
+#endif
+
 #define EEPROM_BASE     0x08080000
 #define EEPROM_LAST     0x08081FFF
 #define EEPROM_SIZE     (EEPROM_LAST - EEPROM_BASE + 1)
@@ -47,13 +56,13 @@ typedef struct {
 
 compile_time_assert(sizeof(eepromData) == 8); /* We don't want any padding */
 
-#if 0
+#if HOST != 1
 static eepromStore * const pStore = (eepromStore *)EEPROM_BASE;
 static eepromData * const  pData = &(((eepromStore*)EEPROM_BASE)->data);
 #else 
 static eepromStore store;
 static eepromStore * const pStore = &store;
-static eepromData * const pData = &(pStore->data);
+static eepromData * const pData = &(store.data);
 #endif
 
 uint32_t generateChecksum(const void * data, uint32_t bytes)
@@ -65,7 +74,7 @@ uint32_t generateChecksum(const void * data, uint32_t bytes)
 
     while(bytes > 0)
     {
-        printf("xor: %u and %u\n", *(pChk + index % 4), *(pD + index));
+        PRINT("xor: %u and %u\n", *(pChk + index % 4), *(pD + index));
         *(pChk + index % 4) ^= *(pD + index);
 
         index++;
@@ -93,30 +102,34 @@ bool checksumOk(void)
 }
 
 
+#if HOST == 1
 int main(void)
 {
-#include <stdio.h>
     memset(pStore, 0, sizeof(*pStore));
     pStore->data.lastShutdownError = 0x55;
     pStore->data.unresponsiveShutdowns = 0x53;
-    printf("generated checksum: %x\n", generateChecksum(pData, sizeof(*pData)));
+    PRINT("generated checksum: %x\n", generateChecksum(pData, sizeof(*pData)));
     checksumUpdate();
-    printf("generated ok?: %d\n", checksumOk());
+    PRINT("generated ok?: %d\n", checksumOk());
 
     return 0;
 }
+
+#else
 
 bool chibios_test_eeprom(void)
 {
     memset(pStore, 0, sizeof(*pStore));
     pStore->data.lastShutdownError = 0x55;
     pStore->data.unresponsiveShutdowns = 0x53;
-    chprintf("generated checksum: %x\n", generateChecksum(pData, sizeof(*pData)));
+    PRINT("generated checksum: %x\n", generateChecksum(pData, sizeof(*pData)));
     checksumUpdate();
-    chprintf("generated ok?: %d\n", checksumOk());
+    PRINT("generated ok?: %d\n", checksumOk());
 
     pStore->data.unresponsiveShutdowns = 0x50;
-    chprintf("generated ok?: %d\n", checksumOk());
-
+    PRINT("generated ok?: %d\n", checksumOk());
+    return false;
 }
+
+#endif
 
