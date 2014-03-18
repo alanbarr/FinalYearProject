@@ -23,6 +23,7 @@
 * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
+#include <string.h>
 
 #include "ch.h"
 #include "hal.h"
@@ -33,10 +34,8 @@
 #include "mpl3115a2.h"
 #include "tsl2561.h"
 
-#include <string.h>
 #include "fyp.h"
 #include "cc3000_chibios_api.h"
-
 #include "clarity_api.h"
 
 I2CConfig i2cConfig;
@@ -45,7 +44,7 @@ msg_t i2cReturn;
 
 Mutex printMtx;
 static Mutex cc3000ApiMutex;
-static controlInformation controlInfo;
+static clarityHttpServerInformation controlInfo;
 
 float pressure;
 float temperature;
@@ -61,7 +60,7 @@ uint16_t channel1;
 #define KEY_LEN             0
 #define BSSID               NULL
 
-static accessPointInformation ap = { "FYP", WLAN_SEC_UNSEC, ""};
+static clarityAccessPointInformation ap = { "FYP", WLAN_SEC_UNSEC, ""};
 
 #define CC3000_SPI_DRIVER              SPID2
 #define CC3000_EXT_DRIVER              EXTD1
@@ -90,8 +89,8 @@ static void i2cErrorHandler(void)
 #endif
 
 
-static uint32_t httpGetRoot(const httpInformation * info, 
-                            connectionInformation * conn)
+static uint32_t httpGetRoot(const clarityHttpRequestInformation * info, 
+                            clarityConnectionInformation * conn)
 {
     static const char * rootStr = "Hello, World";
     uint32_t txBytes;
@@ -113,8 +112,8 @@ static uint32_t httpGetRoot(const httpInformation * info,
 
 #define TEMP_STRING_SIZE        12 /* "101.33 kPa "*/
 #define HTTP_RESPONSE_SIZE      100
-static uint32_t httpGetPressure(const httpInformation * info, 
-                                connectionInformation * conn)
+static uint32_t httpGetPressure(const clarityHttpRequestInformation * info, 
+                                clarityConnectionInformation * conn)
 {
     char pressureStr[TEMP_STRING_SIZE]; 
     float temperature;
@@ -160,8 +159,8 @@ static uint32_t httpGetPressure(const httpInformation * info,
     return 0;
 }
 
-static uint32_t httpGetTemperature(const httpInformation * info, 
-                                   connectionInformation * conn)
+static uint32_t httpGetTemperature(const clarityHttpRequestInformation * info, 
+                                   clarityConnectionInformation * conn)
 {
     (void)info;
     (void)conn;
@@ -189,8 +188,8 @@ static uint32_t httpGetTemperature(const httpInformation * info,
 }
 
 
-static uint32_t httpGetLux(const httpInformation * info, 
-                           connectionInformation * conn)
+static uint32_t httpGetLux(const clarityHttpRequestInformation * info, 
+                           clarityConnectionInformation * conn)
 {
     (void)info;
     (void)conn;
@@ -210,13 +209,9 @@ static uint32_t httpGetLux(const httpInformation * info,
     return 0;
 }
 
-
-
-static void initaliseControl(controlInformation * controlInfo)
+static void initaliseControl(clarityHttpServerInformation * controlInfo)
 {
     memset(controlInfo, 0, sizeof(*controlInfo));
-
-    controlInfo->deviceName = "STM32_CC3000";
 
     controlInfo->resources[0].name = "/";
     controlInfo->resources[0].methods[0].type = GET;
@@ -235,6 +230,7 @@ static void initaliseControl(controlInformation * controlInfo)
     controlInfo->resources[3].methods[0].callback = httpGetLux;
 
 }
+
 void initaliseCC3000(void)
 {
 #ifdef STM32L1XX_MD
@@ -290,9 +286,14 @@ void initaliseCC3000(void)
 
 }
 
+void cc3000Unresponsive(void)
+{
+    PRINT("Clarity thinks CC3000 was unresponsive.", NULL);
+}
+
+
 int main(void)
 {
-
     halInit();
     chSysInit();
 
@@ -336,8 +337,8 @@ int main(void)
 #endif
     initaliseCC3000();
     initaliseControl(&controlInfo);
-    clarityInit(&ap);
-    clarityHttpServerStart(&cc3000ApiMutex, &controlInfo);
+    clarityInit(&cc3000ApiMutex, cc3000Unresponsive, &ap);
+    clarityHttpServerStart(&controlInfo);
 
 #if 0
     rtcTest();
@@ -383,9 +384,6 @@ int main(void)
     }
 
 #endif
-
-
-
 
     while(1)
     {

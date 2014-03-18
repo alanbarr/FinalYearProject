@@ -23,41 +23,12 @@
 * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
-
+#include <string.h>
+#include "clarity_api.h"
 #include "ch.h"
 #include "hal.h"
-#include "string.h"
 #include "fyp.h"
 #include "chprintf.h"
-
-typedef enum {
-    MON = 1,
-    TUES,
-    WED,
-    THURS,
-    FRI,
-    SAT,
-    SUNDAY
-} rtcWeekday;
-    
-typedef struct {
-    bool pm;
-    uint8_t hour;
-    uint8_t minute;
-    uint8_t second;
-} rtcTimeInformation;
-
-typedef struct {
-    uint8_t year;
-    uint8_t month;
-    uint8_t date;
-    rtcWeekday day;
-} rtcDateInformation;
-
-typedef struct {
-    rtcTimeInformation time;
-    rtcDateInformation date;
-} rtcInformation;
 
 #define DR_YT_SHIFT     20
 #define DR_YU_SHIFT     16
@@ -91,7 +62,7 @@ typedef struct {
 #define TR_ST_MASK      (0x3<<TR_ST_SHIFT)
 #define TR_SU_MASK      (0xF<<TR_SU_SHIFT)
 
-void rtcStore(RTCDriver * driver, const rtcInformation * info)
+void rtcStore(RTCDriver * driver, const clarityTimeDate * info)
 {
     RTCTime chRtcTime;
     uint32_t dateRegister = 0;
@@ -127,10 +98,12 @@ void rtcStore(RTCDriver * driver, const rtcInformation * info)
     temp = info->time.second - (temp * 10);         /* Second Units */
     timeRegister |= temp << TR_SU_SHIFT;
 
+#if 0
     if (info->time.pm == true)
     {
         timeRegister |= (1 << TR_PM_SHIFT);
     }
+#endif
   
     memset(&chRtcTime, 0, sizeof(chRtcTime));
     chRtcTime.tv_date = dateRegister;
@@ -142,7 +115,7 @@ void rtcStore(RTCDriver * driver, const rtcInformation * info)
 }
 
 
-void rtcRetrieve(RTCDriver * driver, rtcInformation * info)
+void rtcRetrieve(RTCDriver * driver, clarityTimeDate * info)
 {
     RTCTime chRtcTime;
     
@@ -183,13 +156,15 @@ void rtcRetrieve(RTCDriver * driver, rtcInformation * info)
 
 void rtcTest(void)
 {
-    rtcInformation setInfo;
-    rtcInformation getInfo;
+    clarityTimeDate setInfo;
+    clarityTimeDate getInfo;
 
     memset(&setInfo, 0, sizeof(setInfo));
     memset(&getInfo, 0, sizeof(getInfo));
 
+#if 0
     setInfo.time.pm = false;
+#endif
     setInfo.time.hour = 20;
     setInfo.time.minute = 23;
     setInfo.time.second = 00;
@@ -197,7 +172,7 @@ void rtcTest(void)
     setInfo.date.year = 14;
     setInfo.date.month = 02;
     setInfo.date.date = 17;
-    setInfo.date.day = MON;
+    setInfo.date.day = 1;
 
     rtcStore(&RTC_DRIVER, &setInfo);
 
@@ -207,8 +182,10 @@ void rtcTest(void)
  
     if (
         getInfo.time.second > setInfo.time.second 
+#if 0
         &&
         getInfo.time.pm == setInfo.time.pm 
+#endif
         &&
         getInfo.time.hour == setInfo.time.hour 
         &&
