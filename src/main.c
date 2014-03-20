@@ -65,9 +65,6 @@ static clarityAccessPointInformation ap = { "FYP", WLAN_SEC_UNSEC, ""};
 #define CC3000_SPI_DRIVER              SPID2
 #define CC3000_EXT_DRIVER              EXTD1
 
-#define SUCCESS             0
-#define ERROR               -1
-
 static SPIConfig cc3000SpiConfig;
 static EXTConfig cc3000ExtConfig;
 
@@ -209,7 +206,7 @@ static uint32_t httpGetLux(const clarityHttpRequestInformation * info,
     return 0;
 }
 
-static void initaliseControl(clarityHttpServerInformation * controlInfo)
+static void initialiseControl(clarityHttpServerInformation * controlInfo)
 {
     memset(controlInfo, 0, sizeof(*controlInfo));
 
@@ -231,7 +228,7 @@ static void initaliseControl(clarityHttpServerInformation * controlInfo)
 
 }
 
-void initaliseCC3000(void)
+static void initialiseCC3000(void)
 {
 #ifdef STM32L1XX_MD
 
@@ -286,7 +283,7 @@ void initaliseCC3000(void)
 
 }
 
-void deinitaliseCC3000(void)
+static void deinitialiseCC3000(void)
 {
     cc3000ChibiosShutdown();
     palSetPadMode(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_NSS_PAD,
@@ -308,12 +305,12 @@ void deinitaliseCC3000(void)
                   PAL_MODE_UNCONNECTED);
 }
 
-void cc3000Unresponsive(void)
+static void cc3000Unresponsive(void)
 {
     PRINT("Clarity thinks CC3000 was unresponsive.", NULL);
 }
 
-void initialiseHw(void)
+static void initialiseDebugHw(void)
 {
     /* Led for status */
     palClearPad(LED_PORT, LED_STATUS);
@@ -328,21 +325,6 @@ void initialiseHw(void)
     palSetPadMode(SERIAL_PORT, SERIAL_TX, PAL_MODE_ALTERNATE(7));
     palSetPadMode(SERIAL_PORT, SERIAL_RX, PAL_MODE_ALTERNATE(7));
 
-    /* I2C for sensors */
-    palSetPadMode(I2C_PORT, I2C_SDA, PAL_MODE_ALTERNATE(4) | 
-                                     PAL_STM32_OTYPE_OPENDRAIN |
-                                     PAL_STM32_OSPEED_LOWEST);
-    palSetPadMode(I2C_PORT, I2C_SCL, PAL_MODE_ALTERNATE(4) | 
-                                     PAL_STM32_OTYPE_OPENDRAIN |
-                                     PAL_STM32_OSPEED_LOWEST);
-
-    i2cObjectInit(&I2C_DRIVER);
-
-    i2cConfig.op_mode = OPMODE_I2C;
-    i2cConfig.duty_cycle = STD_DUTY_CYCLE;
-    i2cConfig.clock_speed = 100000;
-    
-    i2cStart(&I2C_DRIVER, &i2cConfig);
 }
 
 void deinitialiseHw(void)
@@ -358,6 +340,30 @@ void deinitialiseHw(void)
     palSetPadMode(SERIAL_PORT, SERIAL_TX, PAL_MODE_UNCONNECTED);
     palSetPadMode(SERIAL_PORT, SERIAL_RX, PAL_MODE_UNCONNECTED);
 
+}
+
+void initialiseSensorHw(void)
+{
+    /* I2C for sensors */
+    palSetPadMode(I2C_PORT, I2C_SDA, PAL_MODE_ALTERNATE(4) | 
+                                     PAL_STM32_OTYPE_OPENDRAIN |
+                                     PAL_STM32_OSPEED_LOWEST);
+    palSetPadMode(I2C_PORT, I2C_SCL, PAL_MODE_ALTERNATE(4) | 
+                                     PAL_STM32_OTYPE_OPENDRAIN |
+                                     PAL_STM32_OSPEED_LOWEST);
+
+    i2cObjectInit(&I2C_DRIVER);
+
+    i2cConfig.op_mode = OPMODE_I2C;
+    i2cConfig.duty_cycle = STD_DUTY_CYCLE;
+    i2cConfig.clock_speed = 100000;
+    
+    i2cStart(&I2C_DRIVER, &i2cConfig);
+
+}
+
+void deinitialiseSensorHw(void)
+{
     /* I2C for sensors */
     i2cStop(&I2C_DRIVER);
     palSetPadMode(I2C_PORT, I2C_SDA, PAL_MODE_UNCONNECTED);
@@ -365,34 +371,130 @@ void deinitialiseHw(void)
 
 }
 
+
+clarityError test_client(void)
+{
+
+#if 0
+    clarityAddressInformation addr;
+    addr.type = CLARITY_ADDRESS_IP;
+    addr.addr.ip = 0x10000001;
+    
+    return clarityBuildSendHttpRequest(clarityAddressInformation * addr,
+                                         const clarityHttpRequestInformation * request,
+                                         char * buf,
+                                         uint16_t bufSize,
+                                         clarityHttpResponseInformation * response)
+#endif
+        static const char * request = "POST /test_device/test HTTP/1.0\r\n"
+                                      "Content-Length: 8\r\n"
+                                      "\r\n"
+                                      "ON UNITS";
+        clarityError rtn;
+        char buf[100];
+        clarityTransportInformation tcp;
+        clarityHttpResponseInformation response;
+
+        memset(buf, 0, sizeof(buf));
+        memset(&tcp, 0, sizeof(tcp));
+
+        tcp.type = CLARITY_TRANSPORT_TCP;
+        tcp.addr.type = CLARITY_ADDRESS_IP;
+        tcp.addr.addr.ip = 0x0A000001;
+        tcp.port = 9000;
+        
+        strncpy(buf, request, strlen(request));
+
+        rtn = claritySendHttpRequest(&tcp, buf, sizeof(buf),
+                                   strlen(request), &response);
+
+        if (response.code == 200)
+        {
+            PRINT("Response was OK: %d", response.code);
+        }
+        else
+        {
+            PRINT("Response was NOT OK: %d.", response.code);
+        }
+        return rtn;
+
+}
+
 int main(void)
 {
+    clarityTimeDate ct;
     halInit();
     
     chSysInit();
 
     chMtxInit(&printMtx);
 
-    initaliseHw();
+    initialiseDebugHw();
 
-    initaliseCC3000();
+    initialiseCC3000();
 
-    initaliseControl(&controlInfo);
+    initialiseControl(&controlInfo);
 
-    clarityInit(&cc3000ApiMutex, cc3000Unresponsive, &ap);
+    if (clarityInit(&cc3000ApiMutex, cc3000Unresponsive, &ap) != CLARITY_SUCCESS)
+    {
+        PRINT("Bugger...", NULL);
+    }
 
-    clarityHttpServerStart(&controlInfo);
-
+    else if (test_client() != CLARITY_SUCCESS)
+    {
+        PRINT("Bugger...", NULL);
+    }
 #if 0
-    rtcTest();
+    if (updateRtcWithSntp() != 0)
+    {
+        PRINT("Bugger...", NULL);
+    }
+
+    rtcRetrieve(&RTC_DRIVER, &ct);
 #endif
+#if 0
+    initialiseSensorHw();
+
 
     while(1)
     {
+#if 0
+        clarityHttpServerStart(&controlInfo);
+#endif
+        static const char * request = "POST /test HTTP/1.0\r\n"
+                                      "Content-Length: 8\r\n"
+                                      "\r\n"
+                                      "ON UNITS";
+        char buf[100];
+        clarityAddressInformation addr;
+        clarityHttpResponseInformation response;
+
+        memset(buf, 0, sizeof(buf));
+        memset(&addr, 0, sizeof(addr));
+
+        addr.type = CLARITY_ADDRESS_IP;
+        addr.addr.ip = 0x10000001;
+        
+        strncpy(buf, request, strlen(request));
+
+        if (claritySendHttpRequest(&addr, buf, sizeof(buf),
+                                   strlen(request), &response) != CLARITY_SUCCESS)
+        {
+            PRINT("claritySendHttpRequest() failed.", NULL);
+        }
+
+        chThdSleep(S2ST(30));
+#if 0
+        clarityHttpServerStop();
+#endif
         palTogglePad(LED_PORT, LED_STATUS);
-        chThdSleep(MS2ST(1000));
     }
 
+#endif
+#if 0
+    rtcTest();
+#endif
+    while(1);
     return 0;
 }
 

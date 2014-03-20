@@ -29,7 +29,7 @@ from http.client import InvalidURL, OK
 from threading import Thread
 import log_data
 
-SERVER_HOST = "localhost"
+SERVER_HOST = "10.0.0.1"
 SERVER_PORT = 9000
 
 

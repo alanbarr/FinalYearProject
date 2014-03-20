@@ -54,14 +54,14 @@ class Cli(cmd.Cmd):
     def do_list(self,str):
         """List devices or resources. Arguments:
            'devices' - Lists all devices
-           <device> 'resources' - List all resources under device"""
+           'resources <device>' - List all resources under device"""
         s = str.split()
         if len(s) == 1 and s[0] == "devices":
             devices = log_data.get_devices()
             for d in devices:
                 print(d)
-        elif len(s) == 2 and s[1] == "resources":
-            resources = log_data.get_device_resources(s[0])
+        elif len(s) == 2 and s[0] == "resources":
+            resources = log_data.get_device_resources(s[1])
             for r in resources:
                 print(r)
         else:
