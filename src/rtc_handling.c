@@ -30,6 +30,9 @@
 #include "fyp.h"
 #include "chprintf.h"
 
+#define DAY_S      (60 * 60 * 24)
+
+/* RTC Time and Date */
 #define DR_YT_SHIFT     20
 #define DR_YU_SHIFT     16
 #define DR_WDU_SHIFT    13
@@ -61,6 +64,38 @@
 #define TR_MNU_MASK     (0xF<<TR_MNU_SHIFT)
 #define TR_ST_MASK      (0x3<<TR_ST_SHIFT)
 #define TR_SU_MASK      (0xF<<TR_SU_SHIFT)
+
+/* RTC Alarm */
+#define ALRMAR_MSK4_SHIFT       31
+#define ALRMAR_WDSEL_SHIFT      30
+#define ALRMAR_DT_SHIFT         28
+#define ALRMAR_DU_SHIFT         24
+#define ALRMAR_MSK3_SHIFT       23
+#define ALRMAR_PM_SHIFT         22
+#define ALRMAR_HT_SHIFT         20
+#define ALRMAR_HU_SHIFT         16
+#define ALRMAR_MSK2_SHIFT       15
+#define ALRMAR_MNT_SHIFT        12
+#define ALRMAR_MNU_SHIFT        8
+#define ALRMAR_MSK1_SHIFT       7
+#define ALRMAR_ST_SHIFT         4
+#define ALRMAR_SU_SHIFT         0
+
+#define ALRMAR_MSK4_MASK        (0x1 << ALRMAR_MSK4_SHIFT)
+#define ALRMAR_WDSEL_MASK       (0x1 << ALRMAR_WDSEL_SHIFT)
+#define ALRMAR_DT_MASK          (0x3 << ALRMAR_DT_SHIFT)   
+#define ALRMAR_DU_MASK          (0xF << ALRMAR_DU_SHIFT)   
+#define ALRMAR_MSK3_MASK        (0x1 << ALRMAR_MSK3_SHIFT)   
+#define ALRMAR_PM_MASK          (0x1 << ALRMAR_PM_SHIFT)   
+#define ALRMAR_HT_MASK          (0x3 << ALRMAR_HT_SHIFT)
+#define ALRMAR_HU_MASK          (0xF << ALRMAR_HU_SHIFT)   
+#define ALRMAR_MSK2_MASK        (0x1 << ALRMAR_MSK2_SHIFT)   
+#define ALRMAR_MNT_MASK         (0x7 << ALRMAR_MNT_SHIFT)   
+#define ALRMAR_MNU_MASK         (0xF << ALRMAR_MNU_SHIFT)   
+#define ALRMAR_MSK1_MASK        (0x1 << ALRMAR_MSK1_SHIFT)   
+#define ALRMAR_ST_MASK          (0x3 << ALRMAR_ST_SHIFT)   
+#define ALRMAR_SU_MASK          (0xF << ALRMAR_SU_SHIFT)   
+
 
 void rtcStore(RTCDriver * driver, const clarityTimeDate * info)
 {
@@ -110,7 +145,6 @@ void rtcStore(RTCDriver * driver, const clarityTimeDate * info)
     chRtcTime.tv_time = timeRegister;
     chRtcTime.h12 = false;
 
-    PRINT("Set: date reg: %X, time reg: %X", chRtcTime.tv_date, chRtcTime.tv_time);
     rtcSetTime(driver, &chRtcTime);
 }
 
@@ -122,9 +156,6 @@ void rtcRetrieve(RTCDriver * driver, clarityTimeDate * info)
     uint8_t temp;
 
     rtcGetTime(driver, &chRtcTime);
-
-
-    PRINT("Get: date reg: %X, time reg: %X", chRtcTime.tv_date, chRtcTime.tv_time);
 
     /* Date */
     temp = ((chRtcTime.tv_date & DR_YT_MASK) >> DR_YT_SHIFT) * 10;  /* Year */
@@ -139,7 +170,6 @@ void rtcRetrieve(RTCDriver * driver, clarityTimeDate * info)
     temp = (chRtcTime.tv_date & DR_WDU_MASK) >> DR_WDU_SHIFT;       /* Weekday */
     info->date.day = temp;           
 
-
     /* Time */
     temp = ((chRtcTime.tv_time & TR_HT_MASK) >> TR_HT_SHIFT) * 10;  /* Hour */
     temp += (chRtcTime.tv_time & TR_HU_MASK) >> TR_HU_SHIFT;
@@ -153,39 +183,123 @@ void rtcRetrieve(RTCDriver * driver, clarityTimeDate * info)
 }
 
 
+int32_t rtcConstructAlarm(RTCAlarm * alarm, clarityTimeDate * timeDate)
+{
 
+    uint32_t temp = 0;
+    uint32_t alarmReg = 0;
+
+    /* MSK4 = 0  - date matches
+     * WDSEL = 0 - DU is date 
+     * MSK3 = 0  - hours match
+     * PM = 0    - 24 hour
+     * MSK2 = 0  - minutes match
+     * MSL1 = 0  - seconds match
+     * */
+    temp = timeDate->date.date / 10;
+    alarmReg |= ALRMAR_DT_MASK & (temp << ALRMAR_DT_SHIFT);
+    temp = timeDate->date.date - (temp * 10);
+    alarmReg |= ALRMAR_DU_MASK & (temp << ALRMAR_DU_SHIFT);
+
+    temp = timeDate->time.hour / 10;
+    alarmReg |= ALRMAR_HT_MASK & (temp << ALRMAR_HT_SHIFT);
+    temp = timeDate->time.hour - (temp * 10);
+    alarmReg |= ALRMAR_HU_MASK & (temp << ALRMAR_HU_SHIFT);
+ 
+    temp = timeDate->time.minute / 10;
+    alarmReg |= ALRMAR_MNT_MASK & (temp << ALRMAR_MNT_SHIFT);
+    temp = timeDate->time.minute - (temp * 10);
+    alarmReg |= ALRMAR_MNU_MASK & (temp << ALRMAR_MNU_SHIFT);
+
+    temp = timeDate->time.second / 10;
+    alarmReg |= ALRMAR_ST_MASK & (temp << ALRMAR_ST_SHIFT);
+    temp = timeDate->time.second - (temp * 10);
+    alarmReg |= ALRMAR_SU_MASK & (temp << ALRMAR_SU_SHIFT);
+
+    alarm->tv_datetime = alarmReg;
+
+    return 0;
+}
+
+static void enterStandby(void)
+{
+#if 0
+    DBGMCU->CR |= DBGMCU_CR_DBG_STANDBY;
+#else
+    DBGMCU->CR &= ~DBGMCU_CR_DBG_STANDBY;
+#endif
+    
+
+    SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+    PWR->CR |= PWR_CR_PDDS;
+    PWR->CR &= ~PWR_CR_LPSDSR;
+    PWR->CR |= PWR_CR_CWUF;
+    __WFI();
+}
+
+/* Standby RTC wake doesn't need any EXTI config */
+int32_t configureRtcAlarmAndStandby(RTCDriver * rtcDriver, uint32_t seconds)
+{
+    RTCAlarm alarm;
+    clarityTimeDate timeDate;
+
+    memset(&alarm, 0, sizeof(alarm));
+    memset(&timeDate, 0, sizeof(timeDate));
+
+    rtcRetrieve(rtcDriver, &timeDate);
+
+    if (clarityTimeIncrement(&timeDate, seconds) != CLARITY_SUCCESS)
+    {
+        return 1;
+    }
+
+    rtcConstructAlarm(&alarm, &timeDate);
+
+    rtcSetAlarm(rtcDriver, 0, &alarm);
+
+    enterStandby();
+
+    return 0;
+}
+
+int32_t updateRtcWithSntp(void)
+{
+    char rxBuf[48];
+    uint32_t sntp;
+    clarityTimeDate clarTime;
+
+    if (clarityGetSntpTime(rxBuf, sizeof(rxBuf), &sntp) != CLARITY_SUCCESS)
+    {
+        PRINT("Bugger...", NULL);
+        return 1;
+    }
+
+    else if (clarityTimeFromSntp(&clarTime, sntp) != CLARITY_SUCCESS)
+    {
+        PRINT("Bugger...", NULL);
+        return 1;
+    }
+
+    else 
+    {
+        rtcStore(&RTC_DRIVER, &clarTime);
+    
+        return 0;
+    }
+
+    return 0;
+}
+
+#if 0
 void rtcTest(void)
 {
     clarityTimeDate setInfo;
-    clarityTimeDate getInfo;
-
-    memset(&setInfo, 0, sizeof(setInfo));
-    memset(&getInfo, 0, sizeof(getInfo));
-
 #if 0
-    setInfo.time.pm = false;
-#endif
-    setInfo.time.hour = 20;
-    setInfo.time.minute = 23;
-    setInfo.time.second = 00;
-
-    setInfo.date.year = 14;
-    setInfo.date.month = 02;
-    setInfo.date.date = 17;
-    setInfo.date.day = 1;
-
-    rtcStore(&RTC_DRIVER, &setInfo);
-
-    chThdSleep(5000);
-
+    clarityTimeDate getInfo;
+    memset(&getInfo, 0, sizeof(getInfo));
     rtcRetrieve(&RTC_DRIVER, &getInfo);
  
-    if (
-        getInfo.time.second > setInfo.time.second 
-#if 0
-        &&
-        getInfo.time.pm == setInfo.time.pm 
-#endif
+    if (getInfo.time.second > setInfo.time.second 
         &&
         getInfo.time.hour == setInfo.time.hour 
         &&
@@ -197,8 +311,7 @@ void rtcTest(void)
         &&
         getInfo.date.date == setInfo.date.date
         &&
-        getInfo.date.day == setInfo.date.day 
-    ) 
+        getInfo.date.day == setInfo.date.day) 
     {
         PRINT("As expected", NULL);
     }
@@ -207,4 +320,37 @@ void rtcTest(void)
  
         PRINT("NOT as expected", NULL);
     }
+
+#endif
+
+    clarityTimeDate alarmTime;
+    RTCAlarm alarm;
+
+    palSetPad(LED_PORT, LED_STATUS);
+    palSetPad(LED_PORT, LED_ERROR);
+
+    memset(&alarm, 0, sizeof(alarm));
+    memset(&setInfo, 0, sizeof(setInfo));
+
+    setInfo.time.hour = 00;
+    setInfo.time.minute = 00;
+    setInfo.time.second = 00;
+    setInfo.date.date = 1;
+    setInfo.date.day = 1;
+    setInfo.date.month = 1;
+    setInfo.date.year = 14;
+
+    memcpy(&alarmTime, &setInfo, sizeof(setInfo));
+
+
+    while (palReadPad(BUTTON_PORT, BUTTON_PAD) == 0);
+
+    rtcStore(&RTC_DRIVER, &setInfo);
+
+    configureRtcAlarmAndStandby(&RTC_DRIVER, 3);
+    
+    while(1);
+
 }
+#endif
+
