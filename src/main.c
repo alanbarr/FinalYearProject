@@ -307,7 +307,7 @@ static void deinitialiseCC3000(void)
 
 static void cc3000Unresponsive(void)
 {
-    PRINT("Clarity thinks CC3000 was unresponsive.", NULL);
+    PRINT("Clarity thinks CC3000 was unresponsive...", NULL);
 }
 
 static void initialiseDebugHw(void)
@@ -422,7 +422,6 @@ clarityError test_client(void)
 
 int main(void)
 {
-    clarityTimeDate ct;
     halInit();
     
     chSysInit();
@@ -440,61 +439,44 @@ int main(void)
         PRINT("Bugger...", NULL);
     }
 
+    else if (clarityHttpServerStart(&controlInfo) != CLARITY_SUCCESS)
+    {
+        PRINT("Bugger...", NULL);
+    }
+
     else if (test_client() != CLARITY_SUCCESS)
     {
         PRINT("Bugger...", NULL);
     }
-#if 0
-    if (updateRtcWithSntp() != 0)
+    
+#if 1
+    else if (updateRtcWithSntp() != 0)
     {
         PRINT("Bugger...", NULL);
     }
 
-    rtcRetrieve(&RTC_DRIVER, &ct);
 #endif
+
 #if 0
     initialiseSensorHw();
+#endif
+    chThdSleep(S2ST(10));
 
-
-    while(1)
+    PRINT("Shutting down...", NULL)
+    if (clarityHttpServerStop() != CLARITY_SUCCESS)
     {
-#if 0
-        clarityHttpServerStart(&controlInfo);
-#endif
-        static const char * request = "POST /test HTTP/1.0\r\n"
-                                      "Content-Length: 8\r\n"
-                                      "\r\n"
-                                      "ON UNITS";
-        char buf[100];
-        clarityAddressInformation addr;
-        clarityHttpResponseInformation response;
-
-        memset(buf, 0, sizeof(buf));
-        memset(&addr, 0, sizeof(addr));
-
-        addr.type = CLARITY_ADDRESS_IP;
-        addr.addr.ip = 0x10000001;
-        
-        strncpy(buf, request, strlen(request));
-
-        if (claritySendHttpRequest(&addr, buf, sizeof(buf),
-                                   strlen(request), &response) != CLARITY_SUCCESS)
-        {
-            PRINT("claritySendHttpRequest() failed.", NULL);
-        }
-
-        chThdSleep(S2ST(30));
-#if 0
-        clarityHttpServerStop();
-#endif
-        palTogglePad(LED_PORT, LED_STATUS);
+        PRINT("clarityHttpServerStop() failed", NULL);
+    }
+    
+    else if (clarityShutdown() != CLARITY_SUCCESS)
+    {
+        PRINT("clarityShutdown() failed", NULL);
     }
 
-#endif
-#if 0
-    rtcTest();
-#endif
+    PRINT("Shut down.", NULL)
+
     while(1);
+
     return 0;
 }
 
