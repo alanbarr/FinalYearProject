@@ -1,0 +1,3 @@
+* store rtc value to eeprom
+    if current rtc < stored: update
+    if current rtc > 24 hours: update
