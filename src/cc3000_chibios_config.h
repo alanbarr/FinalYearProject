@@ -62,7 +62,7 @@
  *           due to the CC3000 seemingly not being designed to share a bus. See
  *           Table 1 CC3000 Module Pins Description in the CC3000
  *           datasheet for more information. */
-#define CHIBIOS_CC3000_SPI_EXCLUSIVE        TRUE
+#define CHIBIOS_CC3000_SPI_EXCLUSIVE        FALSE
 
 /**** Interrupt pin ****/
 /** @brief Port being used for interrupt pin monitoring. */

@@ -46,11 +46,13 @@ Mutex printMtx;
 static Mutex cc3000ApiMutex;
 static clarityHttpServerInformation controlInfo;
 
+#if 0
 float pressure;
 float temperature;
 uint16_t lux;
 uint16_t channel0;
 uint16_t channel1;
+#endif
 
 /* Access point config - arguments to wlan_connect */
 #define SSID                "FYP"
@@ -60,10 +62,15 @@ uint16_t channel1;
 #define KEY_LEN             0
 #define BSSID               NULL
 
+
+
+#define LUX_STRING_SIZE         7 /* "xxx lx" + NULL*/
+#define TEMPERATURE_STRING_SIZE 8  /* "xx.xx C" + NULL */
+#define HTTP_RESPONSE_SIZE      100
+char httpResponse[HTTP_RESPONSE_SIZE]; /* XXX not thread safe */
+
 static clarityAccessPointInformation ap = { "FYP", WLAN_SEC_UNSEC, ""};
 
-#define CC3000_SPI_DRIVER              SPID2
-#define CC3000_EXT_DRIVER              EXTD1
 
 static SPIConfig cc3000SpiConfig;
 static EXTConfig cc3000ExtConfig;
@@ -84,6 +91,20 @@ static void i2cErrorHandler(void)
     while(1);
 }
 #endif
+#include "chprintf.h"
+static void debugPrint(const char * fmt, ...)
+{
+    va_list ap;
+
+    chMtxLock(&printMtx);
+    va_start(ap, fmt);
+    chvprintf((BaseSequentialStream*)&SERIAL_DRIVER, fmt, ap);
+    chMtxUnlock();
+
+  va_end(ap);
+}
+
+
 
 
 static uint32_t httpGetRoot(const clarityHttpRequestInformation * info, 
@@ -107,21 +128,18 @@ static uint32_t httpGetRoot(const clarityHttpRequestInformation * info,
     return 0;
 }
 
-#define TEMP_STRING_SIZE        12 /* "101.33 kPa "*/
-#define HTTP_RESPONSE_SIZE      100
 static uint32_t httpGetPressure(const clarityHttpRequestInformation * info, 
                                 clarityConnectionInformation * conn)
 {
-    char pressureStr[TEMP_STRING_SIZE]; 
+#define PRESSURE_STRING_SIZE        12 /* "101.33 kPa "*/
+    char pressureStr[PRESSURE_STRING_SIZE]; 
     float temperature;
-    float pressure = 123456.78;
+    float pressure;
 
-    char httpResponse[HTTP_RESPONSE_SIZE];
     int32_t httpResponseSize;
     int32_t temp = 0;
     (void)info;
 
-    (void)temperature;
 #if 0
     if (RDY_OK != (i2cReturn = mplOneShotReadBarometer(&I2C_DRIVER,
                                                        MPL3115A2_DEFAULT_ADDR,
@@ -134,7 +152,7 @@ static uint32_t httpGetPressure(const clarityHttpRequestInformation * info,
 
     /* Prepare current pressure temp string */
     pressure = pressure / 1000; /* Pa -> kPa */
-    temp = snprintf(pressureStr, TEMP_STRING_SIZE-1, "%.2f kPa", pressure); 
+    temp = snprintf(pressureStr, PRESSURE_STRING_SIZE-1, "%.2f kPa", pressure); 
     pressureStr[temp+1] = 0;
 #if 0
     PRINT("Pressure Str: %s", pressureStr); /* TODO UNITS */ 
@@ -146,7 +164,8 @@ static uint32_t httpGetPressure(const clarityHttpRequestInformation * info,
                                                  200, "OK",
                                                  pressureStr);
 
-    if ((temp = claritySendInCb(conn, httpResponse, httpResponseSize)) != httpResponseSize)
+    if ((temp = claritySendInCb(conn, httpResponse, httpResponseSize)) 
+              != httpResponseSize)
     {
         PRINT("Send failed.", NULL);
         while(1);
@@ -154,6 +173,7 @@ static uint32_t httpGetPressure(const clarityHttpRequestInformation * info,
     }
 
     return 0;
+#undef PRESSURE_STRING_SIZE
 }
 
 static uint32_t httpGetTemperature(const clarityHttpRequestInformation * info, 
@@ -191,17 +211,46 @@ static uint32_t httpGetLux(const clarityHttpRequestInformation * info,
     (void)info;
     (void)conn;
 
-#if 0
+#if 1
     uint16_t lux;
+    char luxString[LUX_STRING_SIZE];
+    uint16_t httpResponseSize;
+    int16_t temp;
+
+    //clarityCC3000ApiLck();
+    spiAcquireBus(&CC3000_SPI_DRIVER);
+    i2cAcquireBus(&I2C_DRIVER);
+
+    i2cStart(&I2C_DRIVER, &i2cConfig);
     if (RDY_OK != (i2cReturn = tslReadLuxConvertSleep(&I2C_DRIVER,
                                                       TSL2561_ADDR_FLOAT,
                                                       &lux)))
     {
-        i2cErrorHandler();
+        PRINT("Error", NULL);
+    }
+
+    i2cStop(&I2C_DRIVER);
+    i2cReleaseBus(&I2C_DRIVER);
+    spiReleaseBus(&CC3000_SPI_DRIVER);
+    //clarityCC3000ApiUnlck();
+  
+    temp = snprintf(luxString, LUX_STRING_SIZE-1, "%d lx", lux); 
+    luxString[temp+1] = 0;
+    
+    httpResponseSize = clarityHttpBuildResponseTextPlain(httpResponse,
+                                                         sizeof(httpResponse),
+                                                         200, "OK",
+                                                         luxString);
+
+    if (claritySendInCb(conn, httpResponse, httpResponseSize) != httpResponseSize)
+    {
+        PRINT("Send failed.", NULL);
+        while(1);
+        return 1;
     }
 
 
-    PRINT("Lux is: %u\n", lux);
+    PRINT("Lux str is: %s\n", luxString);
 #endif
     return 0;
 }
@@ -236,9 +285,9 @@ static void initialiseCC3000(void)
     cc3000SpiConfig.end_cb = NULL;
     cc3000SpiConfig.ssport = CHIBIOS_CC3000_PORT;
     cc3000SpiConfig.sspad = CHIBIOS_CC3000_NSS_PAD;
+#if 1
     cc3000SpiConfig.cr1 = SPI_CR1_CPHA |    /* 2nd clock transition first data capture edge */
                       (SPI_CR1_BR_1 | SPI_CR1_BR_0 );   /* BR: 011 - 2 MHz  */
- 
     /* Setup SPI pins */
     palSetPad(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_NSS_PAD);
     palSetPadMode(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_NSS_PAD,
@@ -257,6 +306,34 @@ static void initialiseCC3000(void)
                   PAL_MODE_ALTERNATE(5) |       /* SPI */
                   PAL_STM32_OTYPE_PUSHPULL |
                   PAL_STM32_OSPEED_MID2);       /* 10 MHz */
+#else
+
+#if 0
+    cc3000SpiConfig.cr1 = SPI_CR1_CPHA |    /* 2nd clock transition first data capture edge */
+                          (SPI_CR1_BR_0);   /* BR: 001 - 8 MHz  */
+#endif
+
+    cc3000SpiConfig.cr1 = SPI_CR1_CPHA |    /* 2nd clock transition first data capture edge */
+                      (SPI_CR1_BR_1 | SPI_CR1_BR_0 );   /* BR: 011 - 2 MHz  */
+    /* Setup SPI pins */
+    palSetPad(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_NSS_PAD);
+    palSetPadMode(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_NSS_PAD,
+                  PAL_MODE_OUTPUT_PUSHPULL |
+                  PAL_STM32_OSPEED_HIGHEST);
+
+    palSetPadMode(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_SCK_PAD,
+                  PAL_MODE_ALTERNATE(5) |       /* SPI */
+                  PAL_STM32_OTYPE_PUSHPULL |
+                  PAL_STM32_OSPEED_HIGHEST); 
+
+    palSetPadMode(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_MISO_PAD,
+                  PAL_MODE_ALTERNATE(5));     
+
+    palSetPadMode(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_MOSI_PAD,
+                  PAL_MODE_ALTERNATE(5) |       /* SPI */
+                  PAL_STM32_OTYPE_PUSHPULL |
+                  PAL_STM32_OSPEED_MID2);  
+#endif
 
     /* Setup IRQ pin */
     palSetPadMode(CHIBIOS_CC3000_IRQ_PORT, CHIBIOS_CC3000_IRQ_PAD,
@@ -279,7 +356,7 @@ static void initialiseCC3000(void)
     chThdSleep(MS2ST(500));
     cc3000ChibiosWlanInit(&CC3000_SPI_DRIVER, &cc3000SpiConfig,
                           &CC3000_EXT_DRIVER, &cc3000ExtConfig,
-                          0,0,0);
+                          0,0,0, debugPrint);
 
 }
 
@@ -308,6 +385,7 @@ static void deinitialiseCC3000(void)
 static void cc3000Unresponsive(void)
 {
     PRINT("Clarity thinks CC3000 was unresponsive...", NULL);
+    palSetPad(LED_PORT, LED_ERROR);
 }
 
 static void initialiseDebugHw(void)
@@ -358,20 +436,156 @@ void initialiseSensorHw(void)
     i2cConfig.duty_cycle = STD_DUTY_CYCLE;
     i2cConfig.clock_speed = 100000;
     
-    i2cStart(&I2C_DRIVER, &i2cConfig);
 
 }
 
 void deinitialiseSensorHw(void)
 {
     /* I2C for sensors */
-    i2cStop(&I2C_DRIVER);
     palSetPadMode(I2C_PORT, I2C_SDA, PAL_MODE_UNCONNECTED);
     palSetPadMode(I2C_PORT, I2C_SCL, PAL_MODE_UNCONNECTED);
 
 }
 
+/* TODO 
+ * Build http request 
+ * device name
+ * resource
+ * content */
+int16_t buildHttpPost(char * buf, uint16_t bufSize,
+                      const char * device,   /* null t */
+                      const char * resource, /* null t */
+                      const char * content   /* null t */)
+{
+    int16_t temp = 0;
+    
+    temp = snprintf(buf, bufSize - temp, "POST %s%s HTTP/1.0\r\n", device, resource); 
 
+    if (content != NULL)
+    {
+        temp += snprintf(buf + temp, bufSize - temp, "Content-Type: text/plain\r\n");
+        temp += snprintf(buf + temp, bufSize - temp, "Content-Length: %d\r\n", strlen(content));
+        temp += snprintf(buf + temp, bufSize - temp, "\r\n");
+        temp += snprintf(buf + temp, bufSize - temp, "%s", content);
+    }
+    else 
+    {
+        temp += snprintf(buf, bufSize - temp, "%s", content);
+    }
+    return temp;
+}
+
+clarityError post_temperature(void)
+{
+    clarityError rtn;
+    char buf[100];
+    clarityTransportInformation tcp;
+    clarityHttpResponseInformation response;
+    float temperature = 0;
+    float pressure = 0;
+    int16_t postLen = 0;
+    int16_t temp = 0;
+    char tString[TEMPERATURE_STRING_SIZE];
+
+    memset(buf, 0, sizeof(buf));
+    memset(&tcp, 0, sizeof(tcp));
+    memset(&response, 0, sizeof(response));
+
+    tcp.type = CLARITY_TRANSPORT_TCP;
+    tcp.addr.type = CLARITY_ADDRESS_IP;
+    tcp.addr.addr.ip = 0x0A000001;
+    tcp.port = 9000;
+    
+    spiAcquireBus(&CC3000_SPI_DRIVER);
+    i2cAcquireBus(&I2C_DRIVER);
+    i2cStart(&I2C_DRIVER, &i2cConfig);
+
+    if (RDY_OK != (i2cReturn = mplOneShotReadBarometer(&I2C_DRIVER,
+                                                       MPL3115A2_DEFAULT_ADDR,
+                                                       &pressure, 
+                                                       &temperature)))
+    {
+        return 1;
+    }
+
+
+    i2cStop(&I2C_DRIVER);
+    i2cReleaseBus(&I2C_DRIVER);
+    spiReleaseBus(&CC3000_SPI_DRIVER);
+ 
+    temp = snprintf(tString, TEMPERATURE_STRING_SIZE-1, "%.2f C", temperature); 
+    tString[temp+1] = 0;
+
+    postLen = buildHttpPost(buf, sizeof(buf), "/cc3000", "/temperature", tString);
+
+    rtn = claritySendHttpRequest(&tcp, NULL, /*XXX TODO*/buf, sizeof(buf), postLen, &response);
+
+    if (response.code == 200)
+    {
+        PRINT("Response was OK: %d", response.code);
+    }
+    else
+    {
+        PRINT("Response was NOT OK: %d.", response.code);
+    }
+    return rtn;
+
+}
+
+clarityError post_lux(void)
+{
+    clarityError rtn;
+    char buf[100];
+    clarityTransportInformation tcp;
+    clarityHttpResponseInformation response;
+    uint16_t lux = 0;
+    int16_t postLen = 0;
+    int16_t temp = 0;
+    char luxString[LUX_STRING_SIZE];
+
+    memset(buf, 0, sizeof(buf));
+    memset(&tcp, 0, sizeof(tcp));
+    memset(&response, 0, sizeof(response));
+
+    tcp.type = CLARITY_TRANSPORT_TCP;
+    tcp.addr.type = CLARITY_ADDRESS_IP;
+    tcp.addr.addr.ip = 0x0A000001;
+    tcp.port = 9000;
+    
+    spiAcquireBus(&CC3000_SPI_DRIVER);
+    i2cAcquireBus(&I2C_DRIVER);
+    i2cStart(&I2C_DRIVER, &i2cConfig);
+
+    if (RDY_OK != (tslReadLuxConvertSleep(&I2C_DRIVER,
+                                          TSL2561_ADDR_FLOAT,
+                                          &lux)))
+    {
+        PRINT("Error", NULL);
+    }
+
+    i2cStop(&I2C_DRIVER);
+    i2cReleaseBus(&I2C_DRIVER);
+    spiReleaseBus(&CC3000_SPI_DRIVER);
+ 
+    temp = snprintf(luxString, LUX_STRING_SIZE-1, "%d lx", lux); 
+    luxString[temp+1] = 0;
+
+    postLen = buildHttpPost(buf, sizeof(buf), "/cc3000", "/lux", luxString);
+
+    rtn = claritySendHttpRequest(&tcp, NULL/*XXX TODO */, buf, sizeof(buf),
+                                 postLen, &response);
+
+    if (response.code == 200)
+    {
+        PRINT("Response was OK: %d", response.code);
+    }
+    else
+    {
+        PRINT("Response was NOT OK: %d.", response.code);
+    }
+    return rtn;
+
+}
 clarityError test_client(void)
 {
 
@@ -405,7 +619,7 @@ clarityError test_client(void)
         
         strncpy(buf, request, strlen(request));
 
-        rtn = claritySendHttpRequest(&tcp, buf, sizeof(buf),
+        rtn = claritySendHttpRequest(&tcp, buf, NULL, sizeof(buf),
                                    strlen(request), &response);
 
         if (response.code == 200)
@@ -418,6 +632,29 @@ clarityError test_client(void)
         }
         return rtn;
 
+}
+
+void test_bug(void)
+{
+
+#include "nvmem.h"
+#include "hci.h"
+#include "wlan.h"
+    uint8_t patchVer[2];
+
+    PRINT("before wlan_start :%u", NULL);
+    wlan_start(0);
+    PRINT("after wlan_start :%u", NULL);
+
+#if 0
+    wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE);
+#endif
+
+    while(1)
+    {
+        nvmem_read_sp_version(&patchVer);
+        PRINT("ver:%u", patchVer);
+    }
 }
 
 int main(void)
@@ -434,35 +671,53 @@ int main(void)
 
     initialiseControl(&controlInfo);
 
-    if (clarityInit(&cc3000ApiMutex, cc3000Unresponsive, &ap) != CLARITY_SUCCESS)
+    initialiseSensorHw();
+
+    PRINT("Starting...", NULL);
+#if 0
+    test_bug();
+#endif
+
+#if 1
+    if (clarityInit(&cc3000ApiMutex, cc3000Unresponsive, &ap, debugPrint) != CLARITY_SUCCESS)
     {
         PRINT("Bugger...", NULL);
     }
-
-    else if (clarityHttpServerStart(&controlInfo) != CLARITY_SUCCESS)
+#endif
+#if 1
+    while (1)
+    {
+        post_lux();
+        chThdSleep(S2ST(5));
+    }
+#endif
+#if 1
+    if (clarityHttpServerStart(&controlInfo) != CLARITY_SUCCESS)
     {
         PRINT("Bugger...", NULL);
     }
-
+#endif
+#if 0
     else if (test_client() != CLARITY_SUCCESS)
     {
         PRINT("Bugger...", NULL);
     }
+#endif
     
-#if 1
+#if 0
     else if (updateRtcWithSntp() != 0)
     {
         PRINT("Bugger...", NULL);
     }
 
 #endif
+    PRINT("main sleeping", NULL);
 
-#if 0
-    initialiseSensorHw();
-#endif
     chThdSleep(S2ST(10));
 
+#if 1
     PRINT("Shutting down...", NULL)
+
     if (clarityHttpServerStop() != CLARITY_SUCCESS)
     {
         PRINT("clarityHttpServerStop() failed", NULL);
@@ -474,12 +729,10 @@ int main(void)
     }
 
     PRINT("Shut down.", NULL)
-
+#endif
     while(1);
 
     return 0;
 }
-
-
 
 

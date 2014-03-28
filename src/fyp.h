@@ -55,6 +55,10 @@
 /* RTC */
 #define RTC_DRIVER              RTCD1
 
+/* CC3000 */
+#define CC3000_SPI_DRIVER       SPID2
+#define CC3000_EXT_DRIVER       EXTD1
+
 
 extern Mutex printMtx;
 
@@ -67,6 +71,5 @@ extern Mutex printMtx;
 
 
 int32_t updateRtcWithSntp(void);
-
 
 #endif /*__FYP_H__*/

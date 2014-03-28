@@ -41,6 +41,7 @@ class Handler(BaseHTTPRequestHandler):
     def get_file(self, path):
         return log_data.open_csv_file_write(path)
 
+# TODO what if path is bad, no leading forward slash etc XXX
     def path_to_local(self):
         if self.path == "/":
             raise InvalidURL("Invalid Resource:", self.path)
