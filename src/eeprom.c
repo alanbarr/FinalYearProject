@@ -198,3 +198,55 @@ bool chibios_test_eeprom(void)
 }
 #endif
 
+int32_t eepromStoreGet(eepromStore * store)
+{
+    return eepromReadWords(STORE_ADDR_EEPROM, (uint32_t*)&store, sizeof(store));
+}
+
+int32_t eepromStorePut(const eepromStore * store)
+{
+    return eepromWriteWords(STORE_ADDR_EEPROM, (uint32_t*)&store, sizeof(store));
+}
+
+bool eepromWasLastShutdownOk(void)
+{
+    eepromStore data;
+    
+    eepromStoreGet(&data);
+
+    if (data.data.lastShutdownError)
+    {
+        return false;
+    }
+    
+    return true;
+}
+
+int32_t eepromAcknowledgeLastShutdownError(void)
+{
+    eepromStore data;
+    eepromStoreGet(&data);
+    data.data.lastShutdownError = 0;
+    eepromStorePut(&data);
+    return 0;
+}
+
+int32_t eepromRecordUnresponsiveShutdown(void)
+{
+    eepromStore data;
+    
+    eepromStoreGet(&data);
+
+    if (checksumOk(&data) == false)
+    {
+        memset(&data, 0, sizeof(data));
+    }
+    
+    data.data.lastShutdownError = 1;
+    data.data.unresponsiveShutdowns++;
+    checksumUpdate(&data);
+    eepromStorePut(&data);
+
+    return 0;
+}
+

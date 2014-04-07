@@ -30,6 +30,7 @@
 #include "ch.h"
 #include "hal.h"
 #include "chprintf.h"
+#include "clarity_api.h"
 
 /* Serial  */
 #define SERIAL_PORT             GPIOA
@@ -71,5 +72,25 @@ extern Mutex printMtx;
 
 
 int32_t updateRtcWithSntp(void);
+void rtcRetrieve(RTCDriver * driver, clarityTimeDate * info);
+void rtcStore(RTCDriver * driver, const clarityTimeDate * info);
+int32_t configureRtcAlarmAndStandby(RTCDriver * rtcDriver, uint32_t seconds);
+
+void initialiseSensorHw(void);
+void deinitialiseSensorHw(void);
+
+uint32_t httpGetPressure(const clarityHttpRequestInformation * info, 
+                         clarityConnectionInformation * conn);
+uint32_t httpGetTemperature(const clarityHttpRequestInformation * info, 
+                            clarityConnectionInformation * conn);
+uint32_t httpGetLux(const clarityHttpRequestInformation * info, 
+                    clarityConnectionInformation * conn);
+clarityError httpPostTemperature(clarityHttpPersistant * persistant);
+clarityError httpPostLux(clarityHttpPersistant * persistant);
+
+bool eepromWasLastShutdownOk(void);
+int32_t eepromAcknowledgeLastShutdownError(void);
+int32_t eepromRecordUnresponsiveShutdown(void);
+
 
 #endif /*__FYP_H__*/

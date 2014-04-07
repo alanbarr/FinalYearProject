@@ -23,6 +23,7 @@
 * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
+
 #include <string.h>
 #include "clarity_api.h"
 #include "ch.h"
@@ -30,7 +31,7 @@
 #include "fyp.h"
 #include "chprintf.h"
 
-#define DAY_S      (60 * 60 * 24)
+#define DAY_S           (60 * 60 * 24)
 
 /* RTC Time and Date */
 #define DR_YT_SHIFT     20
@@ -228,7 +229,6 @@ static void enterStandby(void)
 #else
     DBGMCU->CR &= ~DBGMCU_CR_DBG_STANDBY;
 #endif
-    
 
     SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
     PWR->CR |= PWR_CR_PDDS;
