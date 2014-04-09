@@ -50,36 +50,43 @@ typedef struct {
 
 compile_time_assert(sizeof(eepromData) == 8); /* We don't want any padding */
 
+
 /* As per: 4.1.1 Unlocking the Data EEPROM block and the FLASH_PECR register in
  * PM0062 Programming Manual */
-static int32_t eepromUnlock(void)
+static eepromError eepromUnlock(void)
 {
 #define PEKEY1 0x89ABCDEF
 #define PEKEY2 0x02030405
     FLASH->PEKEYR = PEKEY1;
     FLASH->PEKEYR = PEKEY2;
 
-    /* Should be cleared - 0 = success */
-    return (FLASH->PECR & FLASH_PECR_PELOCK);
+    if ((FLASH->PECR & FLASH_PECR_PELOCK) != 0)
+    {
+        return EEPROM_ERROR_LOCK;
+    }
+    
+    return EEPROM_ERROR_TRUE;
 }
 
 /* As per: 4.1.1 Unlocking the Data EEPROM block and the FLASH_PECR register in
  * PM0062 Programming Manual */
-static int32_t eepromLock(void)
+static eepromError eepromLock(void)
 {
     FLASH->PECR |= FLASH_PECR_PELOCK;
-    return 0;
+    return EEPROM_ERROR_OK;
 }
 
 /* As per: 4.3.6 Data EEPROM Word Write in PM0062 Programming Manual */
-static int32_t eepromWriteWords(uint32_t * address, const uint32_t * data,  uint32_t size)
+static eepromError eepromWriteWords(uint32_t * address, const uint32_t * data,  uint32_t size)
 {
+    eepromError rtn;
+
     chSysLock();
     size /= sizeof(uint32_t);
 
-    if (eepromUnlock())
+    if ((rtn = eepromUnlock()) != EEPROM_ERROR_OK)
     {
-        return 1;
+        return rtn;
     }
 
     FLASH->PECR |= FLASH_PECR_FTDW; 
@@ -96,13 +103,15 @@ static int32_t eepromWriteWords(uint32_t * address, const uint32_t * data,  uint
 
     chSysUnlock();
 
-    return 0;
+    return EEPROM_ERROR_OK;
 }
 
-static int32_t eepromReadWords(const uint32_t * address, uint32_t * data, uint32_t size)
+static eepromError eepromReadWords(const uint32_t * address, uint32_t * data, uint32_t size)
 {
-    size /= sizeof(uint32_t);
+    eepromError rtn;
 
+    size /= sizeof(uint32_t);
+ 
     while (size > 0)
     {
         *data = *address;
@@ -111,10 +120,10 @@ static int32_t eepromReadWords(const uint32_t * address, uint32_t * data, uint32
         size--;
     }
 
-    return 0;
+    return EEPROM_ERROR_OK;
 }
 
-static uint32_t generateChecksum(const void * data, uint32_t bytes)
+static int32_t generateChecksum(const void * data, uint32_t bytes)
 {
     uint32_t checksum = 0;
     uint8_t index = 0;
@@ -123,7 +132,9 @@ static uint32_t generateChecksum(const void * data, uint32_t bytes)
 
     while(bytes > 0)
     {
+# if 0
         PRINT("xor: %u and %u\n", *(pChk + index % 4), *(pD + index));
+#endif
         *(pChk + index % 4) ^= *(pD + index);
 
         index++;
@@ -133,24 +144,24 @@ static uint32_t generateChecksum(const void * data, uint32_t bytes)
     return checksum;
 }
 
-static int32_t checksumUpdate(eepromStore * store)
+static eepromError checksumUpdate(eepromStore * store)
 {
     store->checksum = generateChecksum(&(store->data), sizeof(store->data));
-    return 0;
+    return EEPROM_ERROR_OK;
 }
 
-static bool checksumOk(eepromStore * store)
+static eepromError checksumOk(eepromStore * store)
 {
     if (generateChecksum(store, sizeof(*store)) == 0)
     {
-        return true;
+        return EEPROM_ERROR_TRUE;
     }
 
-    return false;
+    return EEPROM_ERROR_FALSE;
 }
 
 
-#if 0
+#if 1
 bool chibios_test_eeprom(void)
 {
     eepromStore tempStore;
@@ -180,7 +191,6 @@ bool chibios_test_eeprom(void)
     b = checksumOk(&tempStoreRead);
     PRINT("Read ok?: %d\n", b);
 
-
     if (memcmp(&tempStore, &tempStoreRead, sizeof(tempStore)) == 0)
     {
         PRINT("memcmp ok", NULL);
@@ -198,55 +208,110 @@ bool chibios_test_eeprom(void)
 }
 #endif
 
-int32_t eepromStoreGet(eepromStore * store)
+eepromError eepromStoreGet(eepromStore * store)
 {
-    return eepromReadWords(STORE_ADDR_EEPROM, (uint32_t*)&store, sizeof(store));
+    return eepromReadWords(STORE_ADDR_EEPROM, (uint32_t*)store, sizeof(*store));
 }
 
-int32_t eepromStorePut(const eepromStore * store)
+eepromError eepromStorePut(const eepromStore * store)
 {
-    return eepromWriteWords(STORE_ADDR_EEPROM, (uint32_t*)&store, sizeof(store));
+    return eepromWriteWords(STORE_ADDR_EEPROM, (const uint32_t*)store, sizeof(*store));
 }
 
-bool eepromWasLastShutdownOk(void)
+
+eepromError eepromWasLastShutdownOk(void)
 {
     eepromStore data;
     
     eepromStoreGet(&data);
-
-    if (data.data.lastShutdownError)
+    
+    if (checksumOk(&data) != EEPROM_ERROR_OK)
     {
-        return false;
+        return EEPROM_ERROR_CORRUPT;
+    }
+
+    if (data.data.lastShutdownError == 0)
+    {
+        return EEPROM_ERROR_TRUE;
     }
     
-    return true;
+    return EEPROM_ERROR_FALSE;
 }
 
-int32_t eepromAcknowledgeLastShutdownError(void)
+eepromError eepromWipeStore(void)
 {
     eepromStore data;
-    eepromStoreGet(&data);
-    data.data.lastShutdownError = 0;
-    eepromStorePut(&data);
-    return 0;
-}
-
-int32_t eepromRecordUnresponsiveShutdown(void)
-{
-    eepromStore data;
+    eepromError rtn;
     
-    eepromStoreGet(&data);
+    memset(&data, 0, sizeof(data));
 
-    if (checksumOk(&data) == false)
+    if ((rtn = checksumUpdate(&data)) != EEPROM_ERROR_OK)
+    {
+        return rtn;
+    }
+    else if ((rtn = eepromStorePut(&data)) != EEPROM_ERROR_OK)
+    {
+        return rtn;
+    }
+
+    return EEPROM_ERROR_OK;
+}
+
+eepromError eepromAcknowledgeLastShutdownError(void)
+{
+    eepromStore data;
+    eepromError rtn;
+
+    if ((rtn = eepromStoreGet(&data)) != EEPROM_ERROR_OK)
+    {
+        return rtn;
+    }
+
+    data.data.lastShutdownError = 0;
+
+    if ((rtn = checksumUpdate(&data)) != EEPROM_ERROR_OK)
+    {
+        return rtn;
+    }
+    else if ((rtn = eepromStorePut(&data)) != EEPROM_ERROR_OK)
+    {
+        return rtn;
+    }
+
+    return EEPROM_ERROR_OK;
+}
+
+eepromError eepromRecordUnresponsiveShutdown(void)
+{
+    eepromStore data;
+    eepromError rtn;
+    
+    if ((rtn = eepromStoreGet(&data)) != EEPROM_ERROR_OK)
+    {
+        return rtn;
+    }
+
+    if (checksumOk(&data) == EEPROM_ERROR_TRUE)
     {
         memset(&data, 0, sizeof(data));
     }
     
     data.data.lastShutdownError = 1;
     data.data.unresponsiveShutdowns++;
-    checksumUpdate(&data);
-    eepromStorePut(&data);
+    
+    if ((rtn = checksumUpdate(&data)) != EEPROM_ERROR_OK)
+    {
+        return rtn;
+    }
+    else if ((rtn = eepromStorePut(&data)) != EEPROM_ERROR_OK)
+    {
+        return rtn;
+    }
+    else 
+    {
+        return EEPROM_ERROR_OK;
+    }
 
-    return 0;
+    return EEPROM_ERROR_MISC;
 }
 

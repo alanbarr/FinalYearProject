@@ -88,9 +88,20 @@ uint32_t httpGetLux(const clarityHttpRequestInformation * info,
 clarityError httpPostTemperature(clarityHttpPersistant * persistant);
 clarityError httpPostLux(clarityHttpPersistant * persistant);
 
-bool eepromWasLastShutdownOk(void);
-int32_t eepromAcknowledgeLastShutdownError(void);
-int32_t eepromRecordUnresponsiveShutdown(void);
+
+typedef enum {
+    EEPROM_ERROR_OK     = 0,
+    EEPROM_ERROR_TRUE   = 0,
+    EEPROM_ERROR_FALSE  = 1,
+    EEPROM_ERROR_CORRUPT= 2,
+    EEPROM_ERROR_LOCK   = 3,
+    EEPROM_ERROR_MISC   = 4
+} eepromError;
+
+eepromError eepromWasLastShutdownOk(void);
+eepromError eepromAcknowledgeLastShutdownError(void);
+eepromError eepromRecordUnresponsiveShutdown(void);
+eepromError eepromWipeStore(void);
 
 
 #endif /*__FYP_H__*/
