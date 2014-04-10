@@ -66,17 +66,17 @@
 
 /**** Interrupt pin ****/
 /** @brief Port being used for interrupt pin monitoring. */
-#define CHIBIOS_CC3000_IRQ_PORT             GPIOB
+#define CHIBIOS_CC3000_IRQ_PORT             GPIOC
 /** @brief EXT mode being used for interrupt pin monitoring. */
-#define CHIBIOS_CC3000_IRQ_EXT_MODE         EXT_MODE_GPIOB
+#define CHIBIOS_CC3000_IRQ_EXT_MODE         EXT_MODE_GPIOC
 /** @brief Pin being used for interrupt pin monitoring. */
-#define CHIBIOS_CC3000_IRQ_PAD              9
+#define CHIBIOS_CC3000_IRQ_PAD              1
 
 /**** WLAN Pin / VBAT_SW_EN ****/
 /** @brief Port being used for WLAN Enable control. */
-#define CHIBIOS_CC3000_WLAN_EN_PORT         GPIOB
+#define CHIBIOS_CC3000_WLAN_EN_PORT         GPIOC
 /** @brief Pin being used for WLAN Enable control. */
-#define CHIBIOS_CC3000_WLAN_EN_PAD          8
+#define CHIBIOS_CC3000_WLAN_EN_PAD          2
 
 /**** SPI_DRIVER ****/
 /** @brief Port being used for communications to CC3000. */
@@ -92,7 +92,7 @@
 
 /**** Size of the IRQ thread ****/
 /** @brief Working area size of the IRQ thread. */
-#define CHIBIOS_CC3000_IRQ_THD_AREA         512
+#define CHIBIOS_CC3000_IRQ_THD_AREA         128
 /** @brief Priority of the IRQ thread. Should be higher than the thread
  *         using the CC3000 API. */
 #define CHIBIOS_CC3000_IRQ_THD_PRIO         (HIGHPRIO)
@@ -103,12 +103,12 @@
 
 /**** Debug Helpers  ****/
 /**@brief Set to TRUE to enable basic debug print from the SPI Driver. */
-#define CHIBIOS_CC3000_DBG_PRINT_ENABLED    TRUE
+#define CHIBIOS_CC3000_DBG_PRINT_ENABLED    FALSE
 
 /**@brief Serial driver to use for debug print.
  * @details This must be configured before calling #cc3000ChibiosWlanInit().
  *          Only required if #CHIBIOS_CC3000_DBG_PRINT_ENABLED is TRUE. */
-#define CHIBIOS_CC3000_DBG_PRINT_DRIVER     SD1
+#define CHIBIOS_CC3000_DBG_PRINT_DRIVER     SD2
 
 /**@brief Sets if #CHIBIOS_CC3000_DBG_PRINT_MTX is used to protect chprintf's.
  * @details  Only required if #CHIBIOS_CC3000_DBG_PRINT_ENABLED is TRUE. */

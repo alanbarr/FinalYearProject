@@ -61,9 +61,9 @@
 #define TR_PM_MASK      (0x1<<TR_PM_SHIFT)
 #define TR_HT_MASK      (0x3<<TR_HT_SHIFT)
 #define TR_HU_MASK      (0xF<<TR_HU_SHIFT)
-#define TR_MNT_MASK     (0x3<<TR_MNT_SHIFT)
+#define TR_MNT_MASK     (0x7<<TR_MNT_SHIFT)
 #define TR_MNU_MASK     (0xF<<TR_MNU_SHIFT)
-#define TR_ST_MASK      (0x3<<TR_ST_SHIFT)
+#define TR_ST_MASK      (0x7<<TR_ST_SHIFT)
 #define TR_SU_MASK      (0xF<<TR_SU_SHIFT)
 
 /* RTC Alarm */
@@ -105,6 +105,8 @@ void rtcStore(RTCDriver * driver, const clarityTimeDate * info)
     uint32_t timeRegister = 0;
     uint32_t temp = 0;
 
+    PRINT("RTC STORE: Minutes: %d", info->time.minute);
+
     /* Date */
     temp = info->date.year / 10;                    /* Year Tens */
     dateRegister |= temp << DR_YT_SHIFT;
@@ -133,6 +135,8 @@ void rtcStore(RTCDriver * driver, const clarityTimeDate * info)
     timeRegister |= temp << TR_ST_SHIFT;
     temp = info->time.second - (temp * 10);         /* Second Units */
     timeRegister |= temp << TR_SU_SHIFT;
+
+    PRINT("RTC STORE: TR: %x", timeRegister);
 
 #if 0
     if (info->time.pm == true)
@@ -181,6 +185,9 @@ void rtcRetrieve(RTCDriver * driver, clarityTimeDate * info)
     temp = ((chRtcTime.tv_time & TR_ST_MASK) >> TR_ST_SHIFT) * 10;  /* Second */
     temp += (chRtcTime.tv_time & TR_SU_MASK) >> TR_SU_SHIFT;
     info->time.second = temp;             
+
+    PRINT("RTC RETRIEVE: TR: %x", chRtcTime.tv_time);
+    PRINT("RTC RETRIEVE: Minutes: %d", info->time.minute);
 }
 
 
@@ -224,7 +231,7 @@ int32_t rtcConstructAlarm(RTCAlarm * alarm, clarityTimeDate * timeDate)
 
 static void enterStandby(void)
 {
-#if 0
+#if 1
     DBGMCU->CR |= DBGMCU_CR_DBG_STANDBY;
 #else
     DBGMCU->CR &= ~DBGMCU_CR_DBG_STANDBY;

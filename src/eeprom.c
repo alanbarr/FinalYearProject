@@ -161,7 +161,7 @@ static eepromError checksumOk(eepromStore * store)
 }
 
 
-#if 1
+#if 0
 bool chibios_test_eeprom(void)
 {
     eepromStore tempStore;

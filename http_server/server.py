@@ -28,11 +28,10 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from http.client import InvalidURL, OK
 from threading import Thread
 import log_data
+import time
 
 SERVER_HOST = "10.0.0.1"
 SERVER_PORT = 9000
-
-
 
 HTTP_SERVER_RUNNING = False
 HTTP_SERVER_THREAD = None
@@ -40,6 +39,11 @@ HTTP_SERVER_THREAD = None
 class Handler(BaseHTTPRequestHandler):
     def get_file(self, path):
         return log_data.open_csv_file_write(path)
+
+#http://stackoverflow.com/questions/2617615/slow-python-http-server-on-localhost
+    def address_string(self):
+        host, port = self.client_address[:2]
+        return host
 
 # TODO what if path is bad, no leading forward slash etc XXX
     def path_to_local(self):
@@ -61,7 +65,6 @@ class Handler(BaseHTTPRequestHandler):
         log_file.close()
 
     def do_POST(self):
-        print("In do POST for:", self.path)
         path = self.path_to_local()
         f = self.get_file(path)
         self.log_data(f)
@@ -72,9 +75,10 @@ class Handler(BaseHTTPRequestHandler):
 
 def http_server_thread():
     global HTTP_SERVER_RUNNING
-    HttpServer = HTTPServer((SERVER_HOST, SERVER_PORT), Handler)
-    HttpServer.version = "HTTP/1.0"
-    HttpServer.timeout = 2
+    HttpHandler = Handler
+    HttpHandler.protocol_version = "HTTP/1.1" # XXX TODO
+    HttpServer = HTTPServer((SERVER_HOST, SERVER_PORT), HttpHandler)
+    HttpServer.timeout = 2              #XXX TODO where documentation?
     while(HTTP_SERVER_RUNNING is True):
         HttpServer.handle_request()
 

@@ -34,9 +34,9 @@
 
 /* Serial  */
 #define SERIAL_PORT             GPIOA
-#define SERIAL_TX               9
-#define SERIAL_RX               10
-#define SERIAL_DRIVER           SD1
+#define SERIAL_TX               2
+#define SERIAL_RX               3
+#define SERIAL_DRIVER           SD2
 
 /* LEDs */
 #define LED_PORT                GPIOB
@@ -63,13 +63,17 @@
 
 extern Mutex printMtx;
 
-/* Enable / Disable chprintf's */
 #define PRINT(fmt, ...)                                                     \
         chMtxLock(&printMtx);                                               \
         chprintf((BaseSequentialStream*)&SERIAL_DRIVER,                     \
                  "(%s:%d) " fmt "\n\r", __FILE__, __LINE__, __VA_ARGS__);   \
         chMtxUnlock();
 
+#define PRINT_ERROR()                                                       \
+        chMtxLock(&printMtx);                                               \
+        chprintf((BaseSequentialStream*)&SERIAL_DRIVER,                     \
+                 "(%s:%d) ERROR\n\r", __FILE__, __LINE__);                  \
+        chMtxUnlock();
 
 int32_t updateRtcWithSntp(void);
 void rtcRetrieve(RTCDriver * driver, clarityTimeDate * info);
@@ -86,6 +90,7 @@ uint32_t httpGetTemperature(const clarityHttpRequestInformation * info,
 uint32_t httpGetLux(const clarityHttpRequestInformation * info, 
                     clarityConnectionInformation * conn);
 clarityError httpPostTemperature(clarityHttpPersistant * persistant);
+clarityError httpPostPressure(clarityHttpPersistant * persistant);
 clarityError httpPostLux(clarityHttpPersistant * persistant);
 
 

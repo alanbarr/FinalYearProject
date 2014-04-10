@@ -63,7 +63,7 @@ static clarityAccessPointInformation ap =   {"FYP",
                                              WLAN_SEC_UNSEC,
                                              "",
                                              {
-                                                true,
+                                                false,
                                                 0x0A00000A,
                                                 0xFFFFFF00,
                                                 0x0A000001,
@@ -234,7 +234,9 @@ static void initialiseCC3000(void)
 
 static void deinitialiseCC3000(void)
 {
+#if 1
     cc3000ChibiosShutdown();
+#endif
     palSetPadMode(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_NSS_PAD,
                   PAL_MODE_UNCONNECTED);
 
@@ -259,6 +261,11 @@ static void cc3000Unresponsive(void)
     PRINT("Clarity thinks CC3000 was unresponsive...", NULL);
     palSetPad(LED_PORT, LED_ERROR);
 
+    while(1)
+    {
+        palTogglePad(LED_PORT, LED_ERROR);
+        chThdSleep(MS2ST(1000));
+    }
     configureRtcAlarmAndStandby(&RTC_DRIVER, 60 * 15);
 
 }
@@ -372,7 +379,7 @@ void test_bug(void)
 clarityError httpPostShutdownError(clarityHttpPersistant * persistant)
 {
     clarityError rtn;
-    char buf[100];
+    char buf[110];
     clarityTransportInformation tcp;
     clarityHttpResponseInformation response;
     int16_t postLen = 0;
@@ -389,8 +396,11 @@ clarityError httpPostShutdownError(clarityHttpPersistant * persistant)
     postLen = clarityHttpBuildPost(buf, sizeof(buf), "/cc3000", "/shutdown_errors",
                                    "1 unitless", persistant);
 
-    rtn = clarityHttpSendRequest(&tcp, persistant, buf, sizeof(buf),
-                                 postLen, &response);
+    if (rtn = clarityHttpSendRequest(&tcp, persistant, buf, sizeof(buf),
+                                     postLen, &response) != CLARITY_SUCCESS)
+    {
+        PRINT("Bugger..", NULL);
+    }
 
     if (response.code == 200)
     {
@@ -405,6 +415,7 @@ clarityError httpPostShutdownError(clarityHttpPersistant * persistant)
 
 int main(void)
 {
+
     halInit();
     
     chSysInit();
@@ -420,35 +431,43 @@ int main(void)
     initialiseSensorHw();
 
     PRINT("Starting...", NULL);
-#if 0
-    test_bug();
-#endif
 
-#if 1
     if (clarityInit(&cc3000ApiMutex, cc3000Unresponsive, &ap, debugPrint) != CLARITY_SUCCESS)
     {
         PRINT("Bugger...", NULL);
     }
-#endif
-    clarityTimeDate time;
+
     clarityHttpPersistant persistant;
+
+    memset(&persistant,0,sizeof(persistant));
 
     persistant.closeOnComplete = false;
 
+    clarityTimeDate time;
     rtcRetrieve(&RTC_DRIVER, &time);
+    
+    PRINT("Wokeup: %d:%d:%d.", time.time.hour, time.time.minute, time.time.second);
 
     clarityRegisterProcessStarted();
 
     if (time.date.year < 14)
     {
+        PRINT("Time needs updated.", NULL);
         if (updateRtcWithSntp() != 0)
         {
             PRINT("Bugger...", NULL);
         }
     }
+    else
+    {
+        PRINT("Time doesn't need updated.", NULL);
+    }
 
     if (eepromWasLastShutdownOk() == false)
     {
+
+        PRINT("Last shutdown was not OK.", NULL);
+
         if (httpPostShutdownError(&persistant) == 0)
         {
             eepromAcknowledgeLastShutdownError();
@@ -457,14 +476,47 @@ int main(void)
         {
             PRINT("Bugger...", NULL);
         }
-
+    }
+    else
+    {
+        PRINT("Last shutdown was OK.", NULL);
     }
 
+    PRINT("Posting Lux.", NULL);
+    if (httpPostLux(&persistant) != CLARITY_SUCCESS)
+    {
+        PRINT_ERROR();
+    }
+ 
+    PRINT("Posting Temperature.", NULL);
+    if (httpPostTemperature(&persistant) != CLARITY_SUCCESS)
+    {
+        PRINT_ERROR()
+    }
+
+    persistant.closeOnComplete = true;
+
+    PRINT("Posting Pressure.", NULL);
+    if (httpPostPressure(&persistant) != CLARITY_SUCCESS)
+    {
+        PRINT_ERROR()
+    }
+
+    clarityRegisterProcessFinished();
+
+    PRINT("Done.", NULL);
+
+    clarityShutdown();
+    deinitialiseCC3000();
 #if 1
     while (1)
     {
-        httpPostLux(&persistant);
-        chThdSleep(S2ST(5));
+        rtcRetrieve(&RTC_DRIVER, &time);
+        PRINT("Standby: %d:%d:%d.", time.time.hour, time.time.minute, time.time.second);
+
+        chThdSleep(S2ST(1));
+        palTogglePad(LED_PORT, LED_STATUS);
+        configureRtcAlarmAndStandby(&RTC_DRIVER, 60);
     }
 #endif
 #if 0
@@ -487,11 +539,11 @@ int main(void)
     }
 
 #endif
+#if 0
     PRINT("main sleeping", NULL);
 
     chThdSleep(S2ST(10));
 
-#if 1
     PRINT("Shutting down...", NULL)
 
     clarityRegisterProcessFinished();
