@@ -55,13 +55,7 @@
  *           safely acquire the bus before altering the configuration / 
  *           communicating with the CC3000. This obviously depends on the user
  *           correctly protecting the SPI driver alterations external to this
- *           library.
- *  @warning Use when FALSE has not currently been tested.
- *           This is likely to be an unpopular option however
- *           since I believe you would need a buffer between the MCU and CC3000,
- *           due to the CC3000 seemingly not being designed to share a bus. See
- *           Table 1 CC3000 Module Pins Description in the CC3000
- *           datasheet for more information. */
+ *           library.  */
 #define CHIBIOS_CC3000_SPI_EXCLUSIVE        FALSE
 
 /**** Interrupt pin ****/
@@ -70,19 +64,22 @@
 /** @brief EXT mode being used for interrupt pin monitoring. */
 #define CHIBIOS_CC3000_IRQ_EXT_MODE         EXT_MODE_GPIOC
 /** @brief Pin being used for interrupt pin monitoring. */
-#define CHIBIOS_CC3000_IRQ_PAD              1
+#define CHIBIOS_CC3000_IRQ_PAD              2
 
 /**** WLAN Pin / VBAT_SW_EN ****/
 /** @brief Port being used for WLAN Enable control. */
-#define CHIBIOS_CC3000_WLAN_EN_PORT         GPIOC
+#define CHIBIOS_CC3000_WLAN_EN_PORT         GPIOB
 /** @brief Pin being used for WLAN Enable control. */
-#define CHIBIOS_CC3000_WLAN_EN_PAD          2
+#define CHIBIOS_CC3000_WLAN_EN_PAD          12
 
 /**** SPI_DRIVER ****/
-/** @brief Port being used for communications to CC3000. */
-#define CHIBIOS_CC3000_PORT                 GPIOB
+/** @brief Port being used for chip select. */
+#define CHIBIOS_CC3000_NSS_PORT             GPIOC
 /** @brief Pin used for SPI chip select of CC3000. */
-#define CHIBIOS_CC3000_NSS_PAD              12
+#define CHIBIOS_CC3000_NSS_PAD              1
+
+/** @brief Port being used for hardware handled communications to CC3000. */
+#define CHIBIOS_CC3000_SPI_PORT             GPIOB
 /** @brief Pin used for SPI clock */
 #define CHIBIOS_CC3000_SCK_PAD              13
 /** @brief Pin used for SPI MISO aka CC3000 DOUT. */

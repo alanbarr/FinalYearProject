@@ -41,6 +41,7 @@
 typedef struct {
     uint32_t lastShutdownError; /* True or False */
     uint32_t unresponsiveShutdowns;
+    uint32_t shutdowns;
 } eepromData;
 
 typedef struct {
@@ -48,8 +49,7 @@ typedef struct {
     uint32_t checksum;
 } eepromStore;
 
-compile_time_assert(sizeof(eepromData) == 8); /* We don't want any padding */
-
+compile_time_assert(sizeof(eepromStore) == 16); /* We don't want any padding */
 
 /* As per: 4.1.1 Unlocking the Data EEPROM block and the FLASH_PECR register in
  * PM0062 Programming Manual */
@@ -225,7 +225,7 @@ eepromError eepromWasLastShutdownOk(void)
     
     eepromStoreGet(&data);
     
-    if (checksumOk(&data) != EEPROM_ERROR_OK)
+    if (checksumOk(&data) != EEPROM_ERROR_TRUE)
     {
         return EEPROM_ERROR_CORRUPT;
     }
@@ -291,7 +291,7 @@ eepromError eepromRecordUnresponsiveShutdown(void)
         return rtn;
     }
 
-    if (checksumOk(&data) == EEPROM_ERROR_TRUE)
+    if (checksumOk(&data) != EEPROM_ERROR_TRUE)
     {
         memset(&data, 0, sizeof(data));
     }
@@ -315,3 +315,43 @@ eepromError eepromRecordUnresponsiveShutdown(void)
     return EEPROM_ERROR_MISC;
 }
 
+#if 0
+eepromError eepromRecordShutdown(void)
+{
+    eepromStore data;
+    eepromError rtn;
+    
+    if ((rtn = eepromStoreGet(&data)) != EEPROM_ERROR_OK)
+    {
+        return rtn;
+    }
+
+    if (checksumOk(&data) != EEPROM_ERROR_TRUE)
+    {
+        memset(&data, 0, sizeof(data));
+        PRINT_ERROR();
+    }
+    
+    data.data.shutdowns++;
+    
+    PRINT("Shutdowns now :%u", data.data.shutdowns);
+    PRINT("Shutdowns now :%u", data.data.shutdowns);
+    PRINT("Shutdowns now :%u", data.data.shutdowns);
+
+    if ((rtn = checksumUpdate(&data)) != EEPROM_ERROR_OK)
+    {
+        return rtn;
+    }
+    else if ((rtn = eepromStorePut(&data)) != EEPROM_ERROR_OK)
+    {
+        return rtn;
+    }
+    else 
+    {
+        return EEPROM_ERROR_OK;
+    }
+
+    return EEPROM_ERROR_MISC;
+}
+
+#endif

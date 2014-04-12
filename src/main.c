@@ -155,26 +155,26 @@ static void initialiseCC3000(void)
 
     /* SPI Config */
     cc3000SpiConfig.end_cb = NULL;
-    cc3000SpiConfig.ssport = CHIBIOS_CC3000_PORT;
+    cc3000SpiConfig.ssport = CHIBIOS_CC3000_NSS_PORT;
     cc3000SpiConfig.sspad = CHIBIOS_CC3000_NSS_PAD;
 #if 1
     cc3000SpiConfig.cr1 = SPI_CR1_CPHA |    /* 2nd clock transition first data capture edge */
                       (SPI_CR1_BR_1 | SPI_CR1_BR_0 );   /* BR: 011 - 2 MHz  */
     /* Setup SPI pins */
-    palSetPad(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_NSS_PAD);
-    palSetPadMode(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_NSS_PAD,
+    palSetPad(CHIBIOS_CC3000_NSS_PORT, CHIBIOS_CC3000_NSS_PAD);
+    palSetPadMode(CHIBIOS_CC3000_NSS_PORT, CHIBIOS_CC3000_NSS_PAD,
                   PAL_MODE_OUTPUT_PUSHPULL |
                   PAL_STM32_OSPEED_LOWEST);     /* 400 kHz */
 
-    palSetPadMode(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_SCK_PAD,
+    palSetPadMode(CHIBIOS_CC3000_SPI_PORT, CHIBIOS_CC3000_SCK_PAD,
                   PAL_MODE_ALTERNATE(5) |       /* SPI */
                   PAL_STM32_OTYPE_PUSHPULL |
                   PAL_STM32_OSPEED_MID2);       /* 10 MHz */
 
-    palSetPadMode(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_MISO_PAD,
+    palSetPadMode(CHIBIOS_CC3000_SPI_PORT, CHIBIOS_CC3000_MISO_PAD,
                   PAL_MODE_ALTERNATE(5));       /* SPI */
 
-    palSetPadMode(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_MOSI_PAD,
+    palSetPadMode(CHIBIOS_CC3000_SPI_PORT, CHIBIOS_CC3000_MOSI_PAD,
                   PAL_MODE_ALTERNATE(5) |       /* SPI */
                   PAL_STM32_OTYPE_PUSHPULL |
                   PAL_STM32_OSPEED_MID2);       /* 10 MHz */
@@ -237,16 +237,16 @@ static void deinitialiseCC3000(void)
 #if 1
     cc3000ChibiosShutdown();
 #endif
-    palSetPadMode(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_NSS_PAD,
+    palSetPadMode(CHIBIOS_CC3000_NSS_PORT, CHIBIOS_CC3000_NSS_PAD,
                   PAL_MODE_UNCONNECTED);
 
-    palSetPadMode(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_SCK_PAD,
+    palSetPadMode(CHIBIOS_CC3000_SPI_PORT, CHIBIOS_CC3000_SCK_PAD,
                   PAL_MODE_UNCONNECTED);
 
-    palSetPadMode(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_MISO_PAD,
+    palSetPadMode(CHIBIOS_CC3000_SPI_PORT, CHIBIOS_CC3000_MISO_PAD,
                   PAL_MODE_UNCONNECTED);
 
-    palSetPadMode(CHIBIOS_CC3000_PORT, CHIBIOS_CC3000_MOSI_PAD,
+    palSetPadMode(CHIBIOS_CC3000_SPI_PORT, CHIBIOS_CC3000_MOSI_PAD,
                   PAL_MODE_UNCONNECTED);
 
     palSetPadMode(CHIBIOS_CC3000_IRQ_PORT, CHIBIOS_CC3000_IRQ_PAD,
@@ -259,6 +259,7 @@ static void deinitialiseCC3000(void)
 static void cc3000Unresponsive(void)
 {
     PRINT("Clarity thinks CC3000 was unresponsive...", NULL);
+
     palSetPad(LED_PORT, LED_ERROR);
 
     while(1)
@@ -266,6 +267,7 @@ static void cc3000Unresponsive(void)
         palTogglePad(LED_PORT, LED_ERROR);
         chThdSleep(MS2ST(1000));
     }
+
     configureRtcAlarmAndStandby(&RTC_DRIVER, 60 * 15);
 
 }
@@ -446,8 +448,6 @@ int main(void)
     clarityTimeDate time;
     rtcRetrieve(&RTC_DRIVER, &time);
     
-    PRINT("Wokeup: %d:%d:%d.", time.time.hour, time.time.minute, time.time.second);
-
     clarityRegisterProcessStarted();
 
     if (time.date.year < 14)
@@ -463,14 +463,16 @@ int main(void)
         PRINT("Time doesn't need updated.", NULL);
     }
 
-    if (eepromWasLastShutdownOk() == false)
+    if (eepromWasLastShutdownOk() != EEPROM_ERROR_OK)
     {
-
         PRINT("Last shutdown was not OK.", NULL);
 
         if (httpPostShutdownError(&persistant) == 0)
         {
-            eepromAcknowledgeLastShutdownError();
+            if (eepromAcknowledgeLastShutdownError() != EEPROM_ERROR_OK)
+            {
+                PRINT_ERROR();
+            }
         }
         else
         {
@@ -512,10 +514,17 @@ int main(void)
     while (1)
     {
         rtcRetrieve(&RTC_DRIVER, &time);
-        PRINT("Standby: %d:%d:%d.", time.time.hour, time.time.minute, time.time.second);
 
         chThdSleep(S2ST(1));
         palTogglePad(LED_PORT, LED_STATUS);
+
+#if 0
+        if (eepromRecordShutdown() != EEPROM_ERROR_OK)
+        {
+            PRINT_ERROR();
+        }
+#endif
+
         configureRtcAlarmAndStandby(&RTC_DRIVER, 60);
     }
 #endif

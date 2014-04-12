@@ -107,6 +107,8 @@ eepromError eepromWasLastShutdownOk(void);
 eepromError eepromAcknowledgeLastShutdownError(void);
 eepromError eepromRecordUnresponsiveShutdown(void);
 eepromError eepromWipeStore(void);
-
+#if 0
+eepromError eepromRecordShutdown(void);
+#endif
 
 #endif /*__FYP_H__*/
