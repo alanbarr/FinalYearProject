@@ -94,13 +94,11 @@ static void i2cErrorHandler(void)
 static void debugPrint(const char * fmt, ...)
 {
     va_list ap;
-
-    chMtxLock(&printMtx);
     va_start(ap, fmt);
+    chMtxLock(&printMtx);
     chvprintf((BaseSequentialStream*)&SERIAL_DRIVER, fmt, ap);
     chMtxUnlock();
-
-  va_end(ap);
+    va_end(ap);
 }
 
 
