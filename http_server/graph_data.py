@@ -45,7 +45,6 @@ def get_graph_device_resource(device, resource):
     return fig
 
 def get_graph_device(device):
-
     resources = log_data.get_device_resources(device)
     fig = pyplot.figure()
     fig.suptitle("Graph of " + device)
@@ -57,7 +56,6 @@ def get_graph_device(device):
             axis = axis1
         else:
             axis = fig.add_subplot(len(resources), 1, ctr, sharex=axis1)
-
         ts,da,un = log_data.get_device_resource_lists(device, resource)
         ts.pop(0)
         da.pop(0)

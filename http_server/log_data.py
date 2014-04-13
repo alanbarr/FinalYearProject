@@ -45,6 +45,9 @@ def open_csv_file_write(path):
         c.writerow(CSV_HEADER)
     return f
 
+def close_csv_file(f):
+    f.close()
+
 def open_csv_file_read(path):
     return open(path, "r")
     

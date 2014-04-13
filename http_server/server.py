@@ -43,7 +43,8 @@ class Handler(BaseHTTPRequestHandler):
         return log_data.open_csv_file_write(path)
 
     def close_file(self, f):
-        f.close()
+        log_data.close_csv_file(f)
+
 #http://stackoverflow.com/questions/2617615/slow-python-http-server-on-localhost
     def address_string(self):
         host, port = self.client_address[:2]
