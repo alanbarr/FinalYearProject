@@ -28,9 +28,11 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from http.client import InvalidURL, OK
 from threading import Thread
 import log_data
+import graph_data
 import time
 
-SERVER_HOST = "10.0.0.1"
+#SERVER_HOST = "10.0.0.1"
+SERVER_HOST = "localhost"
 SERVER_PORT = 9000
 
 HTTP_SERVER_RUNNING = False
@@ -40,6 +42,8 @@ class Handler(BaseHTTPRequestHandler):
     def get_file(self, path):
         return log_data.open_csv_file_write(path)
 
+    def close_file(self, f):
+        f.close()
 #http://stackoverflow.com/questions/2617615/slow-python-http-server-on-localhost
     def address_string(self):
         host, port = self.client_address[:2]
@@ -50,6 +54,12 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/":
             raise InvalidURL("Invalid Resource:", self.path)
         return log_data.URL_LOG_DIR + self.path + log_data.URL_LOG_EXT
+ 
+    def path_to_device_resource(self):
+        if self.path.count("/") != 2:
+            raise InvalidURL("Invalid Resource:", self.path)
+        split_path = self.path.split("/")
+        return (split_path[1], split_path[2])
 
     def log_data(self, log_file):
         host,port = self.client_address
@@ -62,16 +72,23 @@ class Handler(BaseHTTPRequestHandler):
         else:
             units = "UNITS"
         log_data.write_measurement_to_csv(log_file, host, data, units)
-        log_file.close()
 
     def do_POST(self):
         path = self.path_to_local()
         f = self.get_file(path)
+        self.end_headers()
         self.log_data(f)
+        close_file(f)
         self.send_response(OK, "OK")
 
     def do_GET(self):
-        print("In do GET for:", self.path)
+        dev,res = self.path_to_device_resource()
+        png = graph_data.open_png_graph_device_resource(dev,res)
+        self.send_response(OK, "OK")
+        self.send_header("Content-type","image/png")
+        self.send_header("Content-length", len(png))
+        self.end_headers()
+        self.wfile.write(png)
 
 def http_server_thread():
     global HTTP_SERVER_RUNNING

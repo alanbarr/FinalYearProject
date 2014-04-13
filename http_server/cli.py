@@ -27,6 +27,7 @@
 import server
 import cmd
 import log_data
+import graph_data
 
 class Cli(cmd.Cmd):
     intro = "Sensor Logging and Control."
@@ -73,9 +74,9 @@ class Cli(cmd.Cmd):
            <device resource> - graph particular resource from device"""
         s = str.split()
         if len(s) == 1:
-            log_data.show_graph_device(s[0])
+            graph_data.show_graph_device(s[0])
         elif len(s) == 2:
-            log_data.show_graph_device_resource(s[0], s[1])
+            graph_data.show_graph_device_resource(s[0], s[1])
         else:
             print("Incorrect argument: ", str)
 

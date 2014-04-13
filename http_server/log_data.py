@@ -27,7 +27,6 @@
 import time
 import csv
 import os.path
-import matplotlib.pyplot as pyplot
 
 URL_LOG_DIR = "./data"
 URL_LOG_EXT = ".csv"
@@ -87,45 +86,4 @@ def get_device_resource_lists(device, resource):
     f.close()
     return (time_list, data_list, unit_list)
 
-def show_graph_device_resource(device, resource):
-    ts,da,un = get_device_resource_lists(device, resource)
-    ts.pop(0)
-    da.pop(0)
-    un.pop(0)
-    if(len(set(un)) != 1):
-        raise Exception("Units not all the same")
-    units = un[0]
-    pyplot.scatter(ts, da)
-    pyplot.title("Graph of " + resource + " from " +  device)
-    pyplot.xlabel("Time (s)")
-    pyplot.ylabel(resource + " (" + units + ")")
-    pyplot.show()
-
-def show_graph_device(device):
-    resources = get_device_resources(device)
-    fig = pyplot.figure()
-    fig.suptitle("Graph of " + device)
-    ctr = 1
-    axis = []
-    for resource in resources:
-        if ctr == 1:
-            axis1 = fig.add_subplot(len(resources), 1, ctr)
-            axis = axis1
-        else:
-            axis = fig.add_subplot(len(resources), 1, ctr, sharex=axis1)
-
-        ts,da,un = get_device_resource_lists(device, resource)
-        ts.pop(0)
-        da.pop(0)
-        un.pop(0)
-        if(len(set(un)) != 1):
-            raise Exception("Units not all the same")
-        units = un[0]
-        axis.scatter(ts, da)
-        axis.set_xlabel("Time (s)")
-        axis.set_ylabel(resource + " (" + units + ")")
-        axis.set_title(resource)
-        ctr += 1
-
-    fig.show()
 
