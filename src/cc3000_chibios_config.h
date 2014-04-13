@@ -56,7 +56,7 @@
  *           communicating with the CC3000. This obviously depends on the user
  *           correctly protecting the SPI driver alterations external to this
  *           library.  */
-#define CHIBIOS_CC3000_SPI_EXCLUSIVE        FALSE
+#define CHIBIOS_CC3000_SPI_EXCLUSIVE        TRUE
 
 /**** Interrupt pin ****/
 /** @brief Port being used for interrupt pin monitoring. */
@@ -86,121 +86,60 @@
 #define CHIBIOS_CC3000_MISO_PAD             14
 /** @brief Pin used for SPI MOSI aka CC3000 DIN. */
 #define CHIBIOS_CC3000_MOSI_PAD             15
-
 /**** Size of the IRQ thread ****/
 /** @brief Working area size of the IRQ thread. */
 #define CHIBIOS_CC3000_IRQ_THD_AREA         128
-/** @brief Priority of the IRQ thread. Should be higher than the thread
- *         using the CC3000 API. */
+/** @brief Priority of the IRQ thread. 
+ *  @warning Should be higher than the thread using the CC3000 API. */
 #define CHIBIOS_CC3000_IRQ_THD_PRIO         (HIGHPRIO)
+
+/**** Debug Helpers  ****/
+/**@brief Set to TRUE to enable basic debug print callbacks from the SPI Driver. 
+ * @details To facilitate this, it will alter some of the API functions. */
+#define CHIBIOS_CC3000_DBG_PRINT_ENABLED    FALSE
 
 /*****************************************************************************/
 /* Under ordinary circumstances, below here should not need to be altered.   */
 /*****************************************************************************/
 
-/**** Debug Helpers  ****/
-/**@brief Set to TRUE to enable basic debug print from the SPI Driver. */
-#define CHIBIOS_CC3000_DBG_PRINT_ENABLED    FALSE
-
-/**@brief Serial driver to use for debug print.
- * @details This must be configured before calling #cc3000ChibiosWlanInit().
- *          Only required if #CHIBIOS_CC3000_DBG_PRINT_ENABLED is TRUE. */
-#define CHIBIOS_CC3000_DBG_PRINT_DRIVER     SD2
-
-/**@brief Sets if #CHIBIOS_CC3000_DBG_PRINT_MTX is used to protect chprintf's.
- * @details  Only required if #CHIBIOS_CC3000_DBG_PRINT_ENABLED is TRUE. */
-#define CHIBIOS_CC3000_DBG_PRINT_USE_MTX    TRUE
-
-/**@brief A mutex variable to protect debug print statements.
- * @details This mutex is needed to prevent occasional muddled text due to
- *          threading. 
- * @warning It must be globally available i.e. must not be declared static and 
- *          must be initialised before calling any CC3000 function.
- *          This same mutex should protect all chprintf statements using the 
- *          driver specified by #CHIBIOS_CC3000_DBG_PRINT_DRIVER. */
-#define CHIBIOS_CC3000_DBG_PRINT_MTX        printMtx
-
-/** @def CHIBIOS_CC3000_DBG_PRINT_MTX_LK
- *  @brief Locks the mutex protecting chprintf messages.
- *  @details Uses #CHIBIOS_CC3000_DBG_PRINT_MTX if 
- *            #CHIBIOS_CC3000_DBG_PRINT_USE_MTX is TRUE. */
-
-/** @def CHIBIOS_CC3000_DBG_PRINT_MTX_UNLK
- *  @brief Unlocks the mutex protecting chprintf messages.
- *  @details Uses #CHIBIOS_CC3000_DBG_PRINT_MTX if 
- *            #CHIBIOS_CC3000_DBG_PRINT_USE_MTX is TRUE. */
-
 /** @def CHIBIOS_CC3000_DBG_PRINT
  *  @brief Debug message print.
- *  @details Only if #CHIBIOS_CC3000_DBG_PRINT_ENABLED is TRUE. Uses the serial
- *           driver specified in #CHIBIOS_CC3000_DBG_PRINT_DRIVER.
+ *  @details Only if #CHIBIOS_CC3000_DBG_PRINT_ENABLED is TRUE.
  *  @param fmt Formatted string, appropriate for chprintf().
  *  @param ... Values for placeholders in @p fmt. */
 
 /** @def CHIBIOS_CC3000_DBG_PRINT_HEX
  *  @brief Debug hex print.
- *  @details Only if #CHIBIOS_CC3000_DBG_PRINT_ENABLED is TRUE. Uses the serial
- *           driver specified in #CHIBIOS_CC3000_DBG_PRINT_DRIVER.
+ *  @details Only if #CHIBIOS_CC3000_DBG_PRINT_ENABLED is TRUE. 
  *  @param DATA Memory address of first element to print.
  *  @param LEN  Length of data to print. */
 
-#if CHIBIOS_CC3000_DBG_PRINT_USE_MTX == TRUE
-    /** @brief Allows the use of the mutex defined by 
-     *         #CHIBIOS_CC3000_DBG_PRINT_MTX.
-     *  @details Only if CHIBIOS_CC3000_DBG_PRINT_USE_MTX is TRUE. */
-    extern Mutex CHIBIOS_CC3000_DBG_PRINT_MTX;
-#endif
+#if CHIBIOS_CC3000_DBG_PRINT_ENABLED == FALSE
 
-#if CHIBIOS_CC3000_DBG_PRINT_USE_MTX == FALSE            
-    #define CHIBIOS_CC3000_DBG_PRINT_MTX_LK()       
-    #define CHIBIOS_CC3000_DBG_PRINT_MTX_UNLK()     
-#else
-    #define CHIBIOS_CC3000_DBG_PRINT_MTX_LK()       \
-        chMtxLock(&CHIBIOS_CC3000_DBG_PRINT_MTX)
-    #define CHIBIOS_CC3000_DBG_PRINT_MTX_UNLK()     \
-        chMtxUnlock()
-#endif
-
-#if CHIBIOS_CC3000_DBG_PRINT_ENABLED == TRUE
-    #include "chprintf.h"
-
-    #define CHIBIOS_CC3000_DBG_PRINT(fmt, ...)                              \
-        CHIBIOS_CC3000_DBG_PRINT_MTX_LK();                                  \
-        chprintf((BaseSequentialStream*)&CHIBIOS_CC3000_DBG_PRINT_DRIVER,   \
-                 "(%s:%d) " fmt "\n\r", __FILE__, __LINE__, __VA_ARGS__);   \
-        CHIBIOS_CC3000_DBG_PRINT_MTX_UNLK();
-
-    #define CHIBIOS_CC3000_DBG_PRINT_HEX(DATA, LEN)                           \
-    {                                                                         \
-        int i = 0;                                                            \
-        CHIBIOS_CC3000_DBG_PRINT_MTX_LK();                                    \
-        while (i++ != LEN)                                                    \
-        {                                                                     \
-            chprintf((BaseSequentialStream*)&CHIBIOS_CC3000_DBG_PRINT_DRIVER, \
-                    "0x%02x ", DATA[i]);                                      \
-        }                                                                     \
-        chprintf((BaseSequentialStream*)&CHIBIOS_CC3000_DBG_PRINT_DRIVER,     \
-                  "\r\n");                                                    \
-        CHIBIOS_CC3000_DBG_PRINT_MTX_UNLK();                                  \
-    }
-#else
     #define CHIBIOS_CC3000_DBG_PRINT(fmt, ...)
     #define CHIBIOS_CC3000_DBG_PRINT_HEX(DATA, LEN)
-#endif
+#else 
+    extern  cc3000PrintCb cc3000Print;
+    #define CHIBIOS_CC3000_DBG_PRINT(fmt, ...)                              \
+                cc3000Print("(%s:%d) " fmt "\n\r", __FILE__, __LINE__, __VA_ARGS__)
 
-/**** Check Config ****/
-/* This library requires SPI to be blocking. */
-#if (!defined(SPI_USE_WAIT)) || (SPI_USE_WAIT == FALSE)
-    #error "SPI_USE_WAIT should be defined as TRUE."
+    #define CHIBIOS_CC3000_DBG_PRINT_HEX(DATA, LEN)                         \
+    {                                                                       \
+        int i = 0;                                                          \
+        while (i++ != LEN)                                                  \
+        {                                                                   \
+            cc3000Print("0x%02x ", DATA[i]);                                \
+        }                                                                   \
+        cc3000Print("\r\n", NULL)
+    }
 #endif
 
 /* If the SPI bus is not exclusive, we need mutex protection enabled. */
 #if (CHIBIOS_CC3000_SPI_EXCLUSIVE == FALSE)
     #if (!defined(SPI_USE_MUTUAL_EXCLUSION)) || (SPI_USE_MUTUAL_EXCLUSION == FALSE)
-    #error "If the SPI bus is not exclusive, mutexs should be used."
+    #error "If the SPI bus is not exclusive, mutexes should be used."
     #endif
 #endif
-
 
 /** @} */
 
