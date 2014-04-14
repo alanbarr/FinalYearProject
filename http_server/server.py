@@ -124,9 +124,9 @@ class Handler(BaseHTTPRequestHandler):
 def http_server_thread():
     global HTTP_SERVER_RUNNING
     HttpHandler = Handler
-    HttpHandler.protocol_version = "HTTP/1.1" # XXX TODO
+    HttpHandler.protocol_version = "HTTP/1.1"
+    HttpHandler.timeout = 10
     HttpServer = HTTPServer((config.SERVER_HOST, config.SERVER_PORT), HttpHandler)
-    HttpServer.timeout = 2              #XXX TODO where documentation?
     while(HTTP_SERVER_RUNNING is True):
         HttpServer.handle_request()
 
