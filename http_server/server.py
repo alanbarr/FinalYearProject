@@ -126,7 +126,6 @@ class Handler(BaseHTTPRequestHandler):
 
         reply = reply + tab
         reply = reply + "</body>" + "</html>"
-        print(reply)
         self.send_response(OK, "OK")
         self.send_header("Content-type", "text/html")
         self.send_header("Content-length", len(reply))
@@ -146,7 +145,6 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(png)
         elif os.path.isfile(config.DATA_DIR + self.path):
-            print("attempting to get" + self.path)
             f=open(config.DATA_DIR + self.path, "rb")
             self.send_response(OK, "OK")
             self.send_header("Content-type", "text/plain")
