@@ -1,0 +1,2 @@
+Simple HTTP server for a final year project at Queens University Belfast.
+
