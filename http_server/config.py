@@ -4,8 +4,8 @@ SERVER_HOST = "192.168.0.34"
 SERVER_PORT = 9000
 
 DATA_DIR = "./data/"
-HTTP_ROOT_FILE = "root_header.txt"
+HTTP_ROOT_FILE = "root_header.html"
 
 
-HTTP_ROOT_FILE_PATH = DATA_DIR + "root_header.txt"
+HTTP_ROOT_FILE_PATH = DATA_DIR + HTTP_ROOT_FILE
 
