@@ -30,10 +30,8 @@ from threading import Thread
 import log_data
 import graph_data
 import time
-
-#SERVER_HOST = "10.0.0.1"
-SERVER_HOST = "localhost"
-SERVER_PORT = 9000
+import os
+import config
 
 HTTP_SERVER_RUNNING = False
 HTTP_SERVER_THREAD = None
@@ -83,19 +81,45 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(OK, "OK")
 
     def do_GET(self):
-        dev,res = self.path_to_device_resource()
-        png = graph_data.open_png_graph_device_resource(dev,res)
-        self.send_response(OK, "OK")
-        self.send_header("Content-type","image/png")
-        self.send_header("Content-length", len(png))
-        self.end_headers()
-        self.wfile.write(png)
+        if (self.path == "/"):  
+            # Build File List
+            f=open(config.HTTP_ROOT_FILE_PATH)
+            reply=f.read()
+            f.close()
+            reply = reply + "\nResources:\n"
+            for first_lvl_p in os.listdir(config.DATA_DIR):
+                if first_lvl_p == config.HTTP_ROOT_FILE:
+                    continue
+                if first_lvl_p.startswith('.'):
+                    continue
+                reply = reply + "\n" + first_lvl_p
+                if os.path.isdir(config.DATA_DIR + first_lvl_p):
+                    reply = reply + "/"
+                    for sec_lvl_p in os.listdir(config.DATA_DIR+first_lvl_p):
+                        if sec_lvl_p.startswith('.'):
+                            continue
+                        else:
+                            reply = reply + "\n" + "     " + sec_lvl_p
+
+            self.send_response(OK, "OK")
+            self.send_header("Content-type","text/plain")
+            self.send_header("Content-length", len(reply))
+            self.end_headers()
+            self.wfile.write(reply.encode(encoding="ASCII"))
+        else:
+            dev,res = self.path_to_device_resource()
+            png = graph_data.open_png_graph_device_resource(dev,res)
+            self.send_response(OK, "OK")
+            self.send_header("Content-type","image/png")
+            self.send_header("Content-length", len(png))
+            self.end_headers()
+            self.wfile.write(png)
 
 def http_server_thread():
     global HTTP_SERVER_RUNNING
     HttpHandler = Handler
     HttpHandler.protocol_version = "HTTP/1.1" # XXX TODO
-    HttpServer = HTTPServer((SERVER_HOST, SERVER_PORT), HttpHandler)
+    HttpServer = HTTPServer((config.SERVER_HOST, config.SERVER_PORT), HttpHandler)
     HttpServer.timeout = 2              #XXX TODO where documentation?
     while(HTTP_SERVER_RUNNING is True):
         HttpServer.handle_request()

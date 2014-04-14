@@ -70,7 +70,7 @@ def matrix_start():
     global MATRIX_THD
     global MATRIX_THD_RUNNING
     global MATRIX_PATTERN
-    bus = i2c.I2Cmaster()
+    bus = i2c.I2CMaster()
     chip = MCP23017(bus, CHIP_ADDR)
     chip.reset()
     chip.write_register(IODIRA, 0x00)
@@ -89,4 +89,5 @@ def matrix_stop():
         MATRIX_THD.join()
         MATRIX_THD = None
 
-
+matrix_start()
+matrix_stop()

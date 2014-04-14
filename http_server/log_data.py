@@ -27,8 +27,8 @@
 import time
 import csv
 import os.path
+import config
 
-URL_LOG_DIR = "./data"
 URL_LOG_EXT = ".csv"
 CSV_HEADER = ["IP", "TIMESTAMP", "DATA", "UNITS"]
 
@@ -57,11 +57,11 @@ def write_measurement_to_csv(f, host, data, units):
     c.writerow([host,sys_time,data,units])
 
 def get_devices():
-    return os.listdir(URL_LOG_DIR)
+    return os.listdir(config.DATA_DIR)
 
 def get_device_resources(device):
     resources = []
-    device_path = URL_LOG_DIR + "/" + device
+    device_path = config.DATA_DIR + "/" + device
     if os.path.isdir(device_path) == False:
         return None
     unfiltered =  os.listdir(device_path)
@@ -76,7 +76,7 @@ def get_device_resources(device):
     return resources
 
 def get_device_resource_lists(device, resource):
-    path = URL_LOG_DIR + "/" + device + "/" + resource + URL_LOG_EXT
+    path = config.DATA_DIR + "/" + device + "/" + resource + URL_LOG_EXT
     f = open_csv_file_read(path)
     c = csv.reader(f)
     time_list = []
