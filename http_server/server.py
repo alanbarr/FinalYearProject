@@ -55,9 +55,10 @@ class Handler(BaseHTTPRequestHandler):
         return log_data.URL_LOG_DIR + self.path + log_data.URL_LOG_EXT
  
     def path_to_device_resource(self):
-        if self.path.count("/") != 2:
-            raise InvalidURL("Invalid Resource:", self.path)
-        split_path = self.path.split("/")
+        path, ext = os.path.splitext(self.path)
+        if path.count("/") != 2:
+            raise InvalidURL("Invalid Resource:", path)
+        split_path = path.split("/")
         return (split_path[1], split_path[2])
 
     def log_data(self, log_file):
@@ -82,31 +83,24 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if (self.path == "/"):  
-            # Build File List
-            f=open(config.HTTP_ROOT_FILE_PATH)
+            f=open(config.HTTP_ROOT_FILE_PATH, "r")
             reply=f.read()
             f.close()
+
             reply = reply + "\nResources:\n"
-            for first_lvl_p in os.listdir(config.DATA_DIR):
-                if first_lvl_p == config.HTTP_ROOT_FILE:
-                    continue
-                if first_lvl_p.startswith('.'):
-                    continue
-                reply = reply + "\n" + first_lvl_p
-                if os.path.isdir(config.DATA_DIR + first_lvl_p):
-                    reply = reply + "/"
-                    for sec_lvl_p in os.listdir(config.DATA_DIR+first_lvl_p):
-                        if sec_lvl_p.startswith('.'):
-                            continue
-                        else:
-                            reply = reply + "\n" + "     " + sec_lvl_p
+            devices = log_data.get_devices()
+            for d in devices:
+                reply = reply + "\n" + d + "/"
+                resources = log_data.get_device_resources(d)
+                for r in resources:
+                    reply = reply + "\n" + "     " + r
 
             self.send_response(OK, "OK")
             self.send_header("Content-type","text/plain")
             self.send_header("Content-length", len(reply))
             self.end_headers()
             self.wfile.write(reply.encode(encoding="ASCII"))
-        else:
+        elif self.path.endswith(".graph"):
             dev,res = self.path_to_device_resource()
             png = graph_data.open_png_graph_device_resource(dev,res)
             self.send_response(OK, "OK")
@@ -114,6 +108,18 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-length", len(png))
             self.end_headers()
             self.wfile.write(png)
+        elif os.path.isfile(config.DATA_DIR + self.path):
+            print("attempting to get" + self.path)
+            f=open(config.DATA_DIR + self.path, "rb")
+            self.send_response(OK, "OK")
+            self.send_header("Content-type", "text/plain")
+            f.seek(0, os.SEEK_END)
+            self.send_header("Content-length",f.tell())
+            f.seek(0, os.SEEK_SET)
+            self.end_headers()
+            self.wfile.write(f.read())
+            f.close()
+            
 
 def http_server_thread():
     global HTTP_SERVER_RUNNING

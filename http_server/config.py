@@ -7,8 +7,5 @@ DATA_DIR = "./data/"
 HTTP_ROOT_FILE = "root_header.txt"
 
 
-
-
-
 HTTP_ROOT_FILE_PATH = DATA_DIR + "root_header.txt"
 

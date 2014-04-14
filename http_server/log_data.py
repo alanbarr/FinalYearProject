@@ -57,8 +57,13 @@ def write_measurement_to_csv(f, host, data, units):
     c.writerow([host,sys_time,data,units])
 
 def get_devices():
-    return os.listdir(config.DATA_DIR)
-
+    full_list = os.listdir(config.DATA_DIR)
+    devices = []
+    for i in range(len(full_list)):
+        if os.path.isdir(config.DATA_DIR + full_list[i]):
+            devices.append(full_list[i])
+    return devices
+           
 def get_device_resources(device):
     resources = []
     device_path = config.DATA_DIR + "/" + device
@@ -72,6 +77,8 @@ def get_device_resources(device):
             continue
         h,t = os.path.split(u)
         r,e = os.path.splitext(t)
+        if e != URL_LOG_EXT:
+            continue
         resources.append(r)
     return resources
 
