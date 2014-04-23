@@ -1,3 +1,5 @@
-data
+data/*
 __py_cache__
 *.pyc
+!data/root_header.html
+!data/favicon.ico

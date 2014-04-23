@@ -30,10 +30,8 @@ from threading import Thread
 import log_data
 import graph_data
 import time
-
-#SERVER_HOST = "10.0.0.1"
-SERVER_HOST = "localhost"
-SERVER_PORT = 9000
+import os
+import config
 
 HTTP_SERVER_RUNNING = False
 HTTP_SERVER_THREAD = None
@@ -57,9 +55,10 @@ class Handler(BaseHTTPRequestHandler):
         return log_data.URL_LOG_DIR + self.path + log_data.URL_LOG_EXT
  
     def path_to_device_resource(self):
-        if self.path.count("/") != 2:
-            raise InvalidURL("Invalid Resource:", self.path)
-        split_path = self.path.split("/")
+        path, ext = os.path.splitext(self.path)
+        if path.count("/") != 2:
+            raise InvalidURL("Invalid Resource:", path)
+        split_path = path.split("/")
         return (split_path[1], split_path[2])
 
     def log_data(self, log_file):
@@ -82,21 +81,86 @@ class Handler(BaseHTTPRequestHandler):
         close_file(f)
         self.send_response(OK, "OK")
 
-    def do_GET(self):
-        dev,res = self.path_to_device_resource()
-        png = graph_data.open_png_graph_device_resource(dev,res)
+    def html_make_link(self,url,text):
+        href_start = "<a href=\""
+        href_end_link = "\">"
+        href_end = "</a>"
+        return href_start + url + href_end_link + text  + href_end
+
+
+    def send_root_html(self):
+        f=open(config.HTTP_ROOT_FILE_PATH, "r")
+        reply=f.read()
+        f.close()
+
+        reply = reply + "<h2 id=\"Resources\">Resources</h2>\n"
+
+        # Make table
+        devices = log_data.get_devices()
+        table_start = "<table>"
+        table_end = "</table>"
+        table_row_start = "<tr>"
+        table_row_end = "</tr>"
+        table_cell_start = "<td>"
+        table_cell_end = "</td>"
+
+        tab = table_start
+        for d in devices:
+            resources = log_data.get_device_resources(d)
+            row = table_row_start
+            row = row + table_cell_start + d + table_cell_end + "\n"
+            row = row + table_cell_start + "" + table_cell_end + "\n"
+            row = row + table_cell_start + "" + table_cell_end + "\n"
+            row = row + table_cell_start + "" + table_cell_end + "\n"
+            row = row + table_row_end
+            tab = tab + row
+            for r in resources:
+                row = table_row_start
+                row = row + table_cell_start + "" + table_cell_end + "\n"
+                row = row + table_cell_start + r + table_cell_end + "\n"
+                row = row + table_cell_start + self.html_make_link(d + "/" + r + ".csv", "csv") + table_cell_end + "\n"
+                row = row + table_cell_start + self.html_make_link(d + "/" + r + ".graph", "graph") + table_cell_end + "\n"
+                row = row + table_row_end
+                tab = tab + row
+        tab = tab + table_end
+
+        reply = reply + tab
+        reply = reply + "</body>" + "</html>"
         self.send_response(OK, "OK")
-        self.send_header("Content-type","image/png")
-        self.send_header("Content-length", len(png))
+        self.send_header("Content-type", "text/html")
+        self.send_header("Content-length", len(reply))
         self.end_headers()
-        self.wfile.write(png)
+        self.wfile.write(reply.encode(encoding="UTF-8"))
+
+
+    def do_GET(self):
+        if (self.path == "/"):  
+            self.send_root_html()
+        elif self.path.endswith(".graph"):
+            dev,res = self.path_to_device_resource()
+            png = graph_data.open_png_graph_device_resource(dev,res)
+            self.send_response(OK, "OK")
+            self.send_header("Content-type","image/png")
+            self.send_header("Content-length", len(png))
+            self.end_headers()
+            self.wfile.write(png)
+        elif os.path.isfile(config.DATA_DIR + self.path):
+            f=open(config.DATA_DIR + self.path, "rb")
+            self.send_response(OK, "OK")
+            self.send_header("Content-type", "text/plain")
+            f.seek(0, os.SEEK_END)
+            self.send_header("Content-length",f.tell())
+            f.seek(0, os.SEEK_SET)
+            self.end_headers()
+            self.wfile.write(f.read())
+            f.close()
 
 def http_server_thread():
     global HTTP_SERVER_RUNNING
     HttpHandler = Handler
-    HttpHandler.protocol_version = "HTTP/1.1" # XXX TODO
-    HttpServer = HTTPServer((SERVER_HOST, SERVER_PORT), HttpHandler)
-    HttpServer.timeout = 2              #XXX TODO where documentation?
+    HttpHandler.protocol_version = "HTTP/1.1"
+    HttpHandler.timeout = 10
+    HttpServer = HTTPServer((config.SERVER_HOST, config.SERVER_PORT), HttpHandler)
     while(HTTP_SERVER_RUNNING is True):
         HttpServer.handle_request()
 
