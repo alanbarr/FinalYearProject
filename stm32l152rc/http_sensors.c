@@ -101,7 +101,7 @@ uint32_t httpGetPressure(const clarityHttpRequestInformation * info,
                                                  200, "OK",
                                                  pressureStr);
 
-    if ((temp = claritySendInCb(conn, httpResponse, httpResponseSize)) 
+    if ((temp = clarityHttpServerSendInCb(conn, httpResponse, httpResponseSize)) 
               != httpResponseSize)
     {
         PRINT("Send failed.", NULL);
@@ -178,7 +178,7 @@ uint32_t httpGetLux(const clarityHttpRequestInformation * info,
                                                          200, "OK",
                                                          luxString);
 
-    if (claritySendInCb(conn, httpResponse, httpResponseSize) != httpResponseSize)
+    if (clarityHttpServerSendInCb(conn, httpResponse, httpResponseSize) != httpResponseSize)
     {
         PRINT("Send failed.", NULL);
         while(1);

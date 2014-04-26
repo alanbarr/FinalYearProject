@@ -65,9 +65,9 @@ CHIBIOS = /home/fyp/fyp/ChibiOS-RT
 LDSCRIPT=$(CHIBIOS)/os/ports/GCC/ARMCMx/STM32L1xx/ld/STM32L152xC.ld 
 #LDSCRIPT= $(PORTLD)/STM32L152xC.ld
 
-CC3000_CHIBIOS_DIR=../ChibiOS_CC3000_SPI
-SENSORS_DIR=../ChibiOS_Sensors/
-CLARITY_DIR=../clarity_core
+CC3000_CHIBIOS_DIR=../../ChibiOS_CC3000_SPI
+SENSORS_DIR=../../ChibiOS_Sensors/
+CLARITY_DIR=../../clarity_core
 
 # Core build files
 include $(CHIBIOS)/boards/ST_32L152CDISCOVERY/board.mk
@@ -94,7 +94,7 @@ CSRC = $(PORTSRC) \
        $(CHIBIOS)/os/various/evtimer.c   \
        $(CHIBIOS)/os/various/syscalls.c  \
        $(CHIBIOS)/os/various/chprintf.c  \
-       $(wildcard src/*.c)\
+       $(wildcard ./*.c)\
        $(CC3000SRC)\
        $(MPL3115A2_SRC) \
        $(TSL2561_SRC) \
@@ -134,7 +134,7 @@ INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
          $(TSL2561_INC) \
          $(CLARITY_INC) \
          $(CC3000INC)	\
-		 src
+         .
 
 #
 # Project, sources and paths

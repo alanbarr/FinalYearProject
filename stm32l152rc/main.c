@@ -114,7 +114,7 @@ static uint32_t httpGetRoot(const clarityHttpRequestInformation * info,
 
     (void)info;
 
-    if ((txBytes = claritySendInCb(conn, rootStr, strlen(rootStr))) != 
+    if ((txBytes = clarityHttpServerSendInCb(conn, rootStr, strlen(rootStr))) != 
          strlen(rootStr))
     {
         PRINT("Send failed.", NULL);

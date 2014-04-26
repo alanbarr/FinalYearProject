@@ -87,7 +87,6 @@ class Handler(BaseHTTPRequestHandler):
         href_end = "</a>"
         return href_start + url + href_end_link + text  + href_end
 
-
     def send_root_html(self):
         f=open(config.HTTP_ROOT_FILE_PATH, "r")
         reply=f.read()
@@ -132,7 +131,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(reply.encode(encoding="UTF-8"))
 
-
+# TODO permit getting the last value (and timestamp)
     def do_GET(self):
         if (self.path == "/"):  
             self.send_root_html()
