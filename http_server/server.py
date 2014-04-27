@@ -1,4 +1,4 @@
-################################################################################
+###############################################################################
 # Copyright (c) 2014, Alan Barr
 # All rights reserved.
 #
@@ -32,9 +32,11 @@ import graph_data
 import time
 import os
 import config
+import i2c_led_matrix_8
 
 HTTP_SERVER_RUNNING = False
 HTTP_SERVER_THREAD = None
+HTTP_SERVER = None
 
 class Handler(BaseHTTPRequestHandler):
     def get_file(self, path):
@@ -157,12 +159,13 @@ class Handler(BaseHTTPRequestHandler):
 
 def http_server_thread():
     global HTTP_SERVER_RUNNING
+    global HTTP_SERVER
     HttpHandler = Handler
     HttpHandler.protocol_version = "HTTP/1.1"
-    HttpHandler.timeout = 20
-    HttpServer = HTTPServer((config.SERVER_HOST, config.SERVER_PORT), HttpHandler)
-    while(HTTP_SERVER_RUNNING is True):
-        HttpServer.handle_request()
+    HttpHandler.timeout = 10
+    HTTP_SERVER = HTTPServer((config.SERVER_HOST, config.SERVER_PORT), HttpHandler)
+    while HTTP_SERVER_RUNNING == True:
+        HTTP_SERVER.handle_request()
 
 def http_server_start():
     global HTTP_SERVER_RUNNING
@@ -174,14 +177,19 @@ def http_server_start():
     HTTP_SERVER_RUNNING = True
     HTTP_SERVER_THREAD = Thread(target = http_server_thread)
     HTTP_SERVER_THREAD.start()
+    i2c_led_matrix_8.matrix_start()
 
 def http_server_stop():
     global HTTP_SERVER_RUNNING
     global HTTP_SERVER_THREAD
+    global HTTP_SERVER
     if HTTP_SERVER_THREAD is not None:
         print("Stopping server...")
         HTTP_SERVER_RUNNING = False
+        HTTP_SERVER.socket.close()
         HTTP_SERVER_THREAD.join()
+        HTTP_SERVER = None
         HTTP_SERVER_THREAD = None
+        i2c_led_matrix_8.matrix_stop()
 
 
