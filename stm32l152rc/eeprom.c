@@ -108,8 +108,6 @@ static eepromError eepromWriteWords(uint32_t * address, const uint32_t * data,  
 
 static eepromError eepromReadWords(const uint32_t * address, uint32_t * data, uint32_t size)
 {
-    eepromError rtn;
-
     size /= sizeof(uint32_t);
  
     while (size > 0)

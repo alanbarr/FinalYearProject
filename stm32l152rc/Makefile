@@ -9,6 +9,11 @@ ifeq ($(USE_OPT),)
   USE_OPT = -O0 -ggdb -fomit-frame-pointer
 endif
 
+# C specific options here (added to USE_OPT).
+ifeq ($(USE_COPT),)
+  USE_COPT = 
+endif
+
 # C++ specific options here (added to USE_OPT).
 ifeq ($(USE_CPPOPT),)
   USE_CPPOPT = -fno-rtti
@@ -17,6 +22,16 @@ endif
 # Enable this if you want the linker to remove unused code and data
 ifeq ($(USE_LINK_GC),)
   USE_LINK_GC = yes
+endif
+
+# Linker extra options here.
+ifeq ($(USE_LDOPT),)
+  USE_LDOPT = 
+endif
+
+# Enable this if you want link time optimizations (LTO)
+ifeq ($(USE_LTO),)
+  USE_LTO = no
 endif
 
 # If enabled, this option allows to compile the application in THUMB mode.
@@ -29,11 +44,6 @@ ifeq ($(USE_VERBOSE_COMPILE),)
   USE_VERBOSE_COMPILE = no
 endif
 
-# Enable register caching optimization (read documentation).
-ifeq ($(USE_CURRP_CACHING),)
-  USE_CURRP_CACHING = no
-endif
-
 #
 # Build global options
 ##############################################################################
@@ -41,11 +51,6 @@ endif
 ##############################################################################
 # Architecture or project specific options
 #
-
-# Enable this if you really want to use the STM FWLib.
-ifeq ($(USE_FWLIB),)
-  USE_FWLIB = no
-endif
 
 #
 # Architecture or project specific options
@@ -58,13 +63,8 @@ endif
 # Define project name here
 PROJECT = fyp
 
-# Imported source files
+# Imported source files and paths
 CHIBIOS = /home/fyp/fyp/ChibiOS-RT
-
-# Define linker script file here
-LDSCRIPT=$(CHIBIOS)/os/ports/GCC/ARMCMx/STM32L1xx/ld/STM32L152xC.ld 
-#LDSCRIPT= $(PORTLD)/STM32L152xC.ld
-
 CC3000_CHIBIOS_DIR=../../ChibiOS_CC3000_SPI
 SENSORS_DIR=../../ChibiOS_Sensors/
 CLARITY_DIR=../../clarity_core
@@ -79,9 +79,8 @@ include $(CC3000_CHIBIOS_DIR)/cc3000.mk
 include $(SENSORS_DIR)/sensors.mk
 include $(CLARITY_DIR)/clarity.mk
 
-
-# Uncomment this to include the test code in the build
-#include $(CHIBIOS)/test/test.mk
+# Define linker script file here
+LDSCRIPT=$(CHIBIOS)/os/ports/GCC/ARMCMx/STM32L1xx/ld/STM32L152xC.ld
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
@@ -93,12 +92,13 @@ CSRC = $(PORTSRC) \
        $(BOARDSRC) \
        $(CHIBIOS)/os/various/evtimer.c   \
        $(CHIBIOS)/os/various/syscalls.c  \
-       $(CHIBIOS)/os/various/chprintf.c  \
        $(wildcard ./*.c)\
        $(CC3000SRC)\
        $(MPL3115A2_SRC) \
        $(TSL2561_SRC) \
-       $(CLARITY_SRC) \
+       $(CLARITY_SRC) 
+	   #\
+       #$(CHIBIOS)/os/various/chprintf.c  \
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
@@ -158,6 +158,7 @@ LD   = $(TRGT)gcc
 CP   = $(TRGT)objcopy
 AS   = $(TRGT)gcc -x assembler-with-cpp
 OD   = $(TRGT)objdump
+SZ   = $(TRGT)size
 HEX  = $(CP) -O ihex
 BIN  = $(CP) -O binary
 
@@ -223,11 +224,5 @@ ULIBS =
 # End of user defines
 ##############################################################################
 
-ifeq ($(USE_FWLIB),yes)
-  include $(CHIBIOS)/ext/stm32lib/stm32lib.mk
-  CSRC += $(STM32SRC)
-  INCDIR += $(STM32INC)
-  USE_OPT += -DUSE_STDPERIPH_DRIVER
-endif
-
-include $(CHIBIOS)/os/ports/GCC/ARMCMx/rules.mk
+RULESPATH = $(CHIBIOS)/os/ports/GCC/ARMCMx
+include $(RULESPATH)/rules.mk

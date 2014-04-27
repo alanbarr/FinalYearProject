@@ -29,7 +29,9 @@
 
 #include "ch.h"
 #include "hal.h"
+#if 1
 #include "chprintf.h"
+#endif
 #include "clarity_api.h"
 
 /* Serial  */
@@ -63,17 +65,12 @@
 
 extern Mutex printMtx;
 
+void debugPrint(const char * fmt, ...);
 #define PRINT(fmt, ...)                                                     \
-        chMtxLock(&printMtx);                                               \
-        chprintf((BaseSequentialStream*)&SERIAL_DRIVER,                     \
-                 "(%s:%d) " fmt "\n\r", __FILE__, __LINE__, __VA_ARGS__);   \
-        chMtxUnlock();
+        debugPrint("(%s:%d) " fmt "\n\r", __FILE__, __LINE__, __VA_ARGS__); \
 
 #define PRINT_ERROR()                                                       \
-        chMtxLock(&printMtx);                                               \
-        chprintf((BaseSequentialStream*)&SERIAL_DRIVER,                     \
-                 "(%s:%d) ERROR\n\r", __FILE__, __LINE__);                  \
-        chMtxUnlock();
+        debugPrint("(%s:%d) ERROR\n\r", __FILE__, __LINE__);                \
 
 int32_t updateRtcWithSntp(void);
 void rtcRetrieve(RTCDriver * driver, clarityTimeDate * info);
@@ -89,9 +86,12 @@ uint32_t httpGetTemperature(const clarityHttpRequestInformation * info,
                             clarityConnectionInformation * conn);
 uint32_t httpGetLux(const clarityHttpRequestInformation * info, 
                     clarityConnectionInformation * conn);
-clarityError httpPostTemperature(clarityHttpPersistant * persistant);
-clarityError httpPostPressure(clarityHttpPersistant * persistant);
-clarityError httpPostLux(clarityHttpPersistant * persistant);
+clarityError httpPostTemperature(clarityTransportInformation * tcp,
+                                 clarityHttpPersistant * persistant);
+clarityError httpPostPressure(clarityTransportInformation * tcp,
+                              clarityHttpPersistant * persistant);
+clarityError httpPostLux(clarityTransportInformation * tcp,
+                         clarityHttpPersistant * persistant);
 
 
 typedef enum {

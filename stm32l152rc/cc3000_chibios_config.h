@@ -56,7 +56,7 @@
  *           communicating with the CC3000. This obviously depends on the user
  *           correctly protecting the SPI driver alterations external to this
  *           library.  */
-#define CHIBIOS_CC3000_SPI_EXCLUSIVE        TRUE
+#define CHIBIOS_CC3000_SPI_EXCLUSIVE        FALSE
 
 /**** Interrupt pin ****/
 /** @brief Port being used for interrupt pin monitoring. */

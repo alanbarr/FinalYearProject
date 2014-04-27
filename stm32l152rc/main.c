@@ -29,12 +29,10 @@
 #include "hal.h"
 #include "board.h"
 #include "chstreams.h"
-#include "chprintf.h"
 
 #include "fyp.h"
 #include "cc3000_chibios_api.h"
 #include "clarity_api.h"
-
 
 Mutex printMtx;
 static Mutex cc3000ApiMutex;
@@ -56,8 +54,8 @@ uint16_t channel1;
 #define KEY_LEN             0
 #define BSSID               NULL
 
-
-
+#define SERVER_URL  "cactuar.eipi.co.uk"
+#define SERVER_PORT 9000
 
 static clarityAccessPointInformation ap =   {"FYP",
                                              WLAN_SEC_UNSEC,
@@ -90,15 +88,17 @@ static void i2cErrorHandler(void)
     while(1);
 }
 #endif
-#include "chprintf.h"
-static void debugPrint(const char * fmt, ...)
+
+void debugPrint(const char * fmt, ...)
 {
+#if 1
     va_list ap;
     va_start(ap, fmt);
     chMtxLock(&printMtx);
     chvprintf((BaseSequentialStream*)&SERIAL_DRIVER, fmt, ap);
     chMtxUnlock();
     va_end(ap);
+#endif
 }
 
 
@@ -376,28 +376,22 @@ void test_bug(void)
 }
 #endif
 
-clarityError httpPostShutdownError(clarityHttpPersistant * persistant)
+clarityError httpPostShutdownError(clarityTransportInformation * tcp,
+                                   clarityHttpPersistant * persistant)
 {
     clarityError rtn;
     char buf[110];
-    clarityTransportInformation tcp;
     clarityHttpResponseInformation response;
     int16_t postLen = 0;
 
     memset(buf, 0, sizeof(buf));
-    memset(&tcp, 0, sizeof(tcp));
     memset(&response, 0, sizeof(response));
 
-    tcp.type = CLARITY_TRANSPORT_TCP;
-    tcp.addr.type = CLARITY_ADDRESS_IP;
-    tcp.addr.addr.ip = 0x0A000001;
-    tcp.port = 9000;
-    
     postLen = clarityHttpBuildPost(buf, sizeof(buf), "/cc3000", "/shutdown_errors",
                                    "1 unitless", persistant);
 
-    if (rtn = clarityHttpSendRequest(&tcp, persistant, buf, sizeof(buf),
-                                     postLen, &response) != CLARITY_SUCCESS)
+    if ((rtn = clarityHttpSendRequest(tcp, persistant, buf, sizeof(buf),
+                                     postLen, &response)) != CLARITY_SUCCESS)
     {
         PRINT("Bugger..", NULL);
     }
@@ -415,7 +409,6 @@ clarityError httpPostShutdownError(clarityHttpPersistant * persistant)
 
 int main(void)
 {
-
     halInit();
     
     chSysInit();
@@ -429,6 +422,14 @@ int main(void)
     initialiseControl(&controlInfo);
 
     initialiseSensorHw();
+
+    clarityTransportInformation tcp;
+
+    memset(&tcp, 0, sizeof(tcp));
+    tcp.type = CLARITY_TRANSPORT_TCP;
+    tcp.addr.type = CLARITY_ADDRESS_URL;
+    strncpy(tcp.addr.addr.url, SERVER_URL, CLARITY_MAX_URL_LENGTH);
+    tcp.port = 9000;
 
     PRINT("Starting...", NULL);
 
@@ -465,7 +466,7 @@ int main(void)
     {
         PRINT("Last shutdown was not OK.", NULL);
 
-        if (httpPostShutdownError(&persistant) == 0)
+        if (httpPostShutdownError(&tcp, &persistant) == 0)
         {
             if (eepromAcknowledgeLastShutdownError() != EEPROM_ERROR_OK)
             {
@@ -482,14 +483,15 @@ int main(void)
         PRINT("Last shutdown was OK.", NULL);
     }
 
+    
     PRINT("Posting Lux.", NULL);
-    if (httpPostLux(&persistant) != CLARITY_SUCCESS)
+    if (httpPostLux(&tcp, &persistant) != CLARITY_SUCCESS)
     {
         PRINT_ERROR();
     }
  
     PRINT("Posting Temperature.", NULL);
-    if (httpPostTemperature(&persistant) != CLARITY_SUCCESS)
+    if (httpPostTemperature(&tcp, &persistant) != CLARITY_SUCCESS)
     {
         PRINT_ERROR()
     }
@@ -497,7 +499,7 @@ int main(void)
     persistant.closeOnComplete = true;
 
     PRINT("Posting Pressure.", NULL);
-    if (httpPostPressure(&persistant) != CLARITY_SUCCESS)
+    if (httpPostPressure(&tcp, &persistant) != CLARITY_SUCCESS)
     {
         PRINT_ERROR()
     }
