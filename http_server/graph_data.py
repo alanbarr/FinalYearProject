@@ -27,6 +27,7 @@
 import matplotlib.pyplot as pyplot
 import log_data
 import io
+import config
 
 def get_graph_device_resource(device, resource):
     ts,da,un = log_data.get_device_resource_lists(device, resource)
@@ -86,6 +87,11 @@ def open_png_graph_device_resource(device,resource):
     buf.seek(0)
     png = buf.read()
     buf.close()
+
+    f = open(config.DATA_DIR + "last_png.png", "wb")
+    f.write(png)
+    f.close()
+
     return png
 
 def open_png_graph_device(device):

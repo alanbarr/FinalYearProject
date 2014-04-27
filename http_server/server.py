@@ -52,7 +52,7 @@ class Handler(BaseHTTPRequestHandler):
     def path_to_local(self):
         if self.path == "/":
             raise InvalidURL("Invalid Resource:", self.path)
-        return log_data.URL_LOG_DIR + self.path + log_data.URL_LOG_EXT
+        return config.DATA_DIR + self.path + log_data.URL_LOG_EXT
  
     def path_to_device_resource(self):
         path, ext = os.path.splitext(self.path)
@@ -76,9 +76,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         path = self.path_to_local()
         f = self.get_file(path)
-        self.end_headers()
+        #self.end_headers()
         self.log_data(f)
-        close_file(f)
+        self.close_file(f)
         self.send_response(OK, "OK")
 
     def html_make_link(self,url,text):
@@ -140,9 +140,10 @@ class Handler(BaseHTTPRequestHandler):
             png = graph_data.open_png_graph_device_resource(dev,res)
             self.send_response(OK, "OK")
             self.send_header("Content-type","image/png")
-            self.send_header("Content-length", len(png))
+            self.send_header("Content-length", str(len(png)))
             self.end_headers()
             self.wfile.write(png)
+
         elif os.path.isfile(config.DATA_DIR + self.path):
             f=open(config.DATA_DIR + self.path, "rb")
             self.send_response(OK, "OK")
@@ -158,7 +159,7 @@ def http_server_thread():
     global HTTP_SERVER_RUNNING
     HttpHandler = Handler
     HttpHandler.protocol_version = "HTTP/1.1"
-    HttpHandler.timeout = 10
+    HttpHandler.timeout = 20
     HttpServer = HTTPServer((config.SERVER_HOST, config.SERVER_PORT), HttpHandler)
     while(HTTP_SERVER_RUNNING is True):
         HttpServer.handle_request()
