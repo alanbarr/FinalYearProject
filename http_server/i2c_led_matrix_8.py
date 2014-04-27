@@ -65,12 +65,13 @@ def update_matrix():
     global MATRIX_PATTERN
     global CHIP
     CHIP.registers.write_register(GPIOA, pattern_to_byte(MATRIX_PATTERN))
-    sleep_ms(100)
 
 def matrix_worker_thread():
     global MATRIX_THD_RUNNING
-    while(MATRIX_THD_RUNNING is True):
+    while MATRIX_THD_RUNNING == True:
+        random_pattern(3)
         update_matrix()
+        time.sleep(3)
 
 def matrix_start():
     global MATRIX_THD
@@ -78,6 +79,7 @@ def matrix_start():
     global MATRIX_PATTERN
     global CHIP
     global MATRIX_THD_LOCK
+    print("Starting display...")
     bus = i2c.I2CMaster()
     CHIP = MCP23017(bus, CHIP_ADDR)
     CHIP.reset()
@@ -115,14 +117,5 @@ def random_pattern(normalised_8):
     MATRIX_PATTERN = "".join(list) 
     MATRIX_THD_LOCK.release()
 
-
-matrix_start()
-
-MATRIX_PATTERN = "10000000"
-
-for i in range(100):
-    random_pattern(3)
-    time.sleep(1)
-matrix_stop()
 
 
