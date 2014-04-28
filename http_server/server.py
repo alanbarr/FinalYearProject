@@ -32,7 +32,8 @@ import graph_data
 import time
 import os
 import config
-import i2c_led_matrix_8
+if config.USE_I2C_MATRIX == True:
+    import i2c_led_matrix_8
 
 HTTP_SERVER_RUNNING = False
 HTTP_SERVER_THREAD = None
@@ -56,8 +57,8 @@ class Handler(BaseHTTPRequestHandler):
             raise InvalidURL("Invalid Resource:", self.path)
         return config.DATA_DIR + self.path + log_data.URL_LOG_EXT
  
-    def path_to_device_resource(self):
-        path, ext = os.path.splitext(self.path)
+    def path_to_device_resource(self, path):
+        path, ext = os.path.splitext(path)
         if path.count("/") != 2:
             raise InvalidURL("Invalid Resource:", path)
         split_path = path.split("/")
@@ -133,12 +134,14 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(reply.encode(encoding="UTF-8"))
 
-# TODO permit getting the last value (and timestamp)
     def do_GET(self):
+        # Get Root
         if (self.path == "/"):  
             self.send_root_html()
+
+        # Get Graph
         elif self.path.endswith(".graph"):
-            dev,res = self.path_to_device_resource()
+            dev,res = self.path_to_device_resource(self.path)
             png = graph_data.open_png_graph_device_resource(dev,res)
             self.send_response(OK, "OK")
             self.send_header("Content-type","image/png")
@@ -146,6 +149,7 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(png)
 
+        # Get CSV
         elif os.path.isfile(config.DATA_DIR + self.path):
             f=open(config.DATA_DIR + self.path, "rb")
             self.send_response(OK, "OK")
@@ -156,6 +160,18 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(f.read())
             f.close()
+
+        # Get last value
+        elif os.path.isfile(config.DATA_DIR + self.path + log_data.URL_LOG_EXT):
+            dev,res = self.path_to_device_resource(self.path + log_data.URL_LOG_EXT)
+            t, d, u = log_data.get_device_resource_lists(dev, res)
+            s = "TIMESTAMP, DATA, UNIT\n"
+            s += str(t[-1]) + "," + str(d[-1]) + "," + str(u[-1])
+            self.send_response(OK, "OK")
+            self.send_header("Content-type", "text/plain")
+            self.send_header("Content-length", str(len(s)))
+            self.end_headers()
+            self.wfile.write(s.encode(encoding="UTF-8"))
 
 def http_server_thread():
     global HTTP_SERVER_RUNNING
@@ -177,7 +193,8 @@ def http_server_start():
     HTTP_SERVER_RUNNING = True
     HTTP_SERVER_THREAD = Thread(target = http_server_thread)
     HTTP_SERVER_THREAD.start()
-    i2c_led_matrix_8.matrix_start()
+    if config.USE_I2C_MATRIX == True:
+        i2c_led_matrix_8.matrix_start()
 
 def http_server_stop():
     global HTTP_SERVER_RUNNING
@@ -190,6 +207,7 @@ def http_server_stop():
         HTTP_SERVER_THREAD.join()
         HTTP_SERVER = None
         HTTP_SERVER_THREAD = None
-        i2c_led_matrix_8.matrix_stop()
+        if config.USE_I2C_MATRIX == True:
+            i2c_led_matrix_8.matrix_stop()
 
 
