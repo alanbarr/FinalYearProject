@@ -120,7 +120,8 @@ class Handler(BaseHTTPRequestHandler):
                 row = table_row_start
                 row = row + table_cell_start + "" + table_cell_end + "\n"
                 row = row + table_cell_start + r + table_cell_end + "\n"
-                row = row + table_cell_start + self.html_make_link(d + "/" + r + ".csv", "csv") + table_cell_end + "\n"
+                row = row + table_cell_start + self.html_make_link(d + "/" + r + ".csv", "full csv") + table_cell_end + "\n"
+                row = row + table_cell_start + self.html_make_link(d + "/" + r, "last csv") + table_cell_end + "\n"
                 row = row + table_cell_start + self.html_make_link(d + "/" + r + ".graph", "graph") + table_cell_end + "\n"
                 row = row + table_row_end
                 tab = tab + row
