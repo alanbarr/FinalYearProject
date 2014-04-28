@@ -258,14 +258,16 @@ static void cc3000Unresponsive(void)
 {
     PRINT("Clarity thinks CC3000 was unresponsive...", NULL);
 
-    palSetPad(LED_PORT, LED_ERROR);
-
+    /* TODO debugging XXX */
+#if 1
     while(1)
     {
         palTogglePad(LED_PORT, LED_ERROR);
         chThdSleep(MS2ST(1000));
     }
+#endif
 
+    eepromRecordUnresponsiveShutdown();
     configureRtcAlarmAndStandby(&RTC_DRIVER, 60 * 15);
 
 }
