@@ -83,6 +83,8 @@ class Handler(BaseHTTPRequestHandler):
         self.log_data(f)
         self.close_file(f)
         self.send_response(OK, "OK")
+        if config.USE_I2C_MATRIX == True and "lux" in path:
+            i2c_led_matrix_8.update_scaled(
 
     def html_make_link(self,url,text):
         href_start = "<a href=\""

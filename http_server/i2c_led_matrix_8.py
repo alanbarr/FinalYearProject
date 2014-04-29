@@ -42,6 +42,25 @@ CHIP = None
 
 CHIP_ADDR = 0x20
 
+MIN_SCALED = 0
+MAX_SCALED = 1
+SCALED = 0
+
+def update_scaled(value):
+    global MIN_SCALED
+    global MAX_SCALED 
+    global SCALED
+
+    if MIN_SCALED > value:
+        MIN_SCALED = value
+    if MAX_SCALED < value:
+        MAX_SCALED = value
+
+    division = (MAX_SCALED - MIN_SCALED) / 8
+    MATRIX_THD_LOCK.acquire()
+    SCALED = (value-MIN_SCALED) / division
+    MATRIX_THD_LOCK.release()
+
 def sleep_ms(t):
     time.sleep(t/1000)
 
@@ -68,9 +87,12 @@ def update_matrix():
 
 def matrix_worker_thread():
     global MATRIX_THD_RUNNING
+    global MATRIX_THD_LOCK
     while MATRIX_THD_RUNNING == True:
-        random_pattern(3)
+        MATRIX_THD_LOCK.acquire()
+        random_pattern(SCALED)
         update_matrix()
+        MATRIX_THD_LOCK.release()
         time.sleep(3)
 
 def matrix_start():

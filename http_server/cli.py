@@ -33,6 +33,9 @@ class Cli(cmd.Cmd):
     intro = "Sensor Logging and Control."
     prompt = "(SLC) "
 
+    def emptyline(self):
+        pass
+
     def do_server(self,str):
         """HTTP server control. Arguments:
         'start' - start the server
@@ -48,9 +51,6 @@ class Cli(cmd.Cmd):
         """Exit from the program."""
         server.http_server_stop()
         return True
-
-    def emptyline(self):
-        pass
     
     def do_list(self,str):
         """List devices or resources. Arguments:
