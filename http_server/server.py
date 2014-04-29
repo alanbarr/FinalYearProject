@@ -76,6 +76,13 @@ class Handler(BaseHTTPRequestHandler):
             units = "UNITS"
         log_data.write_measurement_to_csv(log_file, host, data, units)
 
+    def handle_lux(self):
+        body_len = int(self.headers.get('content-length'))
+        body = self.rfile.read(body_len).decode().split()
+        if len(body) > 0:
+            data = body[0]
+            i2c_led_matrix_8.update_scaled(data)
+
     def do_POST(self):
         path = self.path_to_local()
         f = self.get_file(path)
@@ -84,7 +91,7 @@ class Handler(BaseHTTPRequestHandler):
         self.close_file(f)
         self.send_response(OK, "OK")
         if config.USE_I2C_MATRIX == True and "lux" in path:
-            i2c_led_matrix_8.update_scaled(
+            self.handle_lux()
 
     def html_make_link(self,url,text):
         href_start = "<a href=\""
