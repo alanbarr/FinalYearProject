@@ -96,9 +96,8 @@ CSRC = $(PORTSRC) \
        $(CC3000SRC)\
        $(MPL3115A2_SRC) \
        $(TSL2561_SRC) \
-       $(CLARITY_SRC) 
-	   #\
-       #$(CHIBIOS)/os/various/chprintf.c  \
+       $(CLARITY_SRC) \
+       $(CHIBIOS)/os/various/chprintf.c  
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.

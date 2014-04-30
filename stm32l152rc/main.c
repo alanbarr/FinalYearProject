@@ -34,30 +34,21 @@
 #include "cc3000_chibios_api.h"
 #include "clarity_api.h"
 
+/* Key configuration information */
+#define SSID           "FYP"
+#define SSID_LEN        strlen(SSID)
+#define SEC_TYPE        WLAN_SEC_UNSEC
+
+#define SERVER_URL      "cactuar.eipi.co.uk"
+#define SERVER_PORT     9000
+#define STANDBY_TIME_S  60
+
 Mutex printMtx;
 static Mutex cc3000ApiMutex;
 static clarityHttpServerInformation controlInfo;
 
-#if 0
-float pressure;
-float temperature;
-uint16_t lux;
-uint16_t channel0;
-uint16_t channel1;
-#endif
 
-/* Access point config - arguments to wlan_connect */
-#define SSID                "FYP"
-#define SSID_LEN            strlen(SSID)
-#define SEC_TYPE            WLAN_SEC_UNSEC
-#define KEY                 NULL
-#define KEY_LEN             0
-#define BSSID               NULL
-
-#define SERVER_URL  "cactuar.eipi.co.uk"
-#define SERVER_PORT 9000
-
-static clarityAccessPointInformation ap =   {"FYP",
+static clarityAccessPointInformation ap =   {SSID,
                                              WLAN_SEC_UNSEC,
                                              "",
                                              {
@@ -74,43 +65,21 @@ static EXTConfig cc3000ExtConfig;
 
 uint8_t zero = 0x00;
 
-#if 0
-static void i2cErrorHandler(void)
-{
-    palSetPad(LED_PORT, LED_ERROR);
-    PRINT("i2cReturn: 0x%x.", i2cReturn);
-    
-    if (i2cReturn == RDY_RESET)
-    {
-        errorFlags = i2cGetErrors(&I2C_DRIVER);
-        PRINT("Errors: 0x%x.", errorFlags);
-    }
-    while(1);
-}
-#endif
-
 void debugPrint(const char * fmt, ...)
 {
-#if 1
     va_list ap;
     va_start(ap, fmt);
     chMtxLock(&printMtx);
     chvprintf((BaseSequentialStream*)&SERIAL_DRIVER, fmt, ap);
     chMtxUnlock();
     va_end(ap);
-#endif
 }
-
-
-
 
 static uint32_t httpGetRoot(const clarityHttpRequestInformation * info, 
                             clarityConnectionInformation * conn)
 {
     static const char * rootStr = "Hello, World";
     uint32_t txBytes;
-
-    PRINT("in %s!!!!!!!!!!!!", __FUNCTION__);
 
     (void)info;
 
@@ -232,9 +201,8 @@ static void initialiseCC3000(void)
 
 static void deinitialiseCC3000(void)
 {
-#if 1
     cc3000ChibiosShutdown();
-#endif
+    
     palSetPadMode(CHIBIOS_CC3000_NSS_PORT, CHIBIOS_CC3000_NSS_PAD,
                   PAL_MODE_UNCONNECTED);
 
@@ -303,80 +271,6 @@ void deinitialiseHw(void)
 
 }
 
-#if 0
-clarityError test_client(void)
-{
-
-#if 0
-    clarityAddressInformation addr;
-    addr.type = CLARITY_ADDRESS_IP;
-    addr.addr.ip = 0x10000001;
-    
-    return clarityBuildSendHttpRequest(clarityAddressInformation * addr,
-                                         const clarityHttpRequestInformation * request,
-                                         char * buf,
-                                         uint16_t bufSize,
-                                         clarityHttpResponseInformation * response)
-#endif
-        static const char * request = "POST /test_device/test HTTP/1.0\r\n"
-                                      "Content-Length: 8\r\n"
-                                      "\r\n"
-                                      "ON UNITS";
-        clarityError rtn;
-        char buf[100];
-        clarityTransportInformation tcp;
-        clarityHttpResponseInformation response;
-
-        memset(buf, 0, sizeof(buf));
-        memset(&tcp, 0, sizeof(tcp));
-
-        tcp.type = CLARITY_TRANSPORT_TCP;
-        tcp.addr.type = CLARITY_ADDRESS_IP;
-        tcp.addr.addr.ip = 0x0A000001;
-        tcp.port = 9000;
-        
-        strncpy(buf, request, strlen(request));
-
-        rtn = claritySendHttpRequest(&tcp, buf, NULL, sizeof(buf),
-                                   strlen(request), &response);
-
-        if (response.code == 200)
-        {
-            PRINT("Response was OK: %d", response.code);
-        }
-        else
-        {
-            PRINT("Response was NOT OK: %d.", response.code);
-        }
-        return rtn;
-
-}
-#endif
-
-#if 0
-void test_bug(void)
-{
-
-#include "nvmem.h"
-#include "hci.h"
-#include "wlan.h"
-    uint8_t patchVer[2];
-
-    PRINT("before wlan_start :%u", NULL);
-    wlan_start(0);
-    PRINT("after wlan_start :%u", NULL);
-
-#if 0
-    wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE);
-#endif
-
-    while(1)
-    {
-        nvmem_read_sp_version(&patchVer);
-        PRINT("ver:%u", patchVer);
-    }
-}
-#endif
 
 clarityError httpPostShutdownError(clarityTransportInformation * tcp,
                                    clarityHttpPersistant * persistant)
@@ -395,7 +289,7 @@ clarityError httpPostShutdownError(clarityTransportInformation * tcp,
     if ((rtn = clarityHttpSendRequest(tcp, persistant, buf, sizeof(buf),
                                      postLen, &response)) != CLARITY_SUCCESS)
     {
-        PRINT("Bugger..", NULL);
+        PRINT_ERROR();
     }
 
     if (response.code == 200)
@@ -431,19 +325,18 @@ int main(void)
     tcp.type = CLARITY_TRANSPORT_TCP;
     tcp.addr.type = CLARITY_ADDRESS_URL;
     strncpy(tcp.addr.addr.url, SERVER_URL, CLARITY_MAX_URL_LENGTH);
-    tcp.port = 9000;
+    tcp.port = SERIAL_PORT;
 
     PRINT("Starting...", NULL);
 
-    if (clarityInit(&cc3000ApiMutex, cc3000Unresponsive, &ap, debugPrint) != CLARITY_SUCCESS)
+    if (clarityInit(&cc3000ApiMutex, cc3000Unresponsive, &ap, debugPrint) 
+            != CLARITY_SUCCESS)
     {
-        PRINT("Bugger...", NULL);
+        PRINT_ERROR();
     }
 
     clarityHttpPersistant persistant;
-
     memset(&persistant,0,sizeof(persistant));
-
     persistant.closeOnComplete = false;
 
     clarityTimeDate time;
@@ -456,7 +349,7 @@ int main(void)
         PRINT("Time needs updated.", NULL);
         if (updateRtcWithSntp() != 0)
         {
-            PRINT("Bugger...", NULL);
+            PRINT_ERROR();
         }
     }
     else
@@ -477,7 +370,7 @@ int main(void)
         }
         else
         {
-            PRINT("Bugger...", NULL);
+            PRINT_ERROR();
         }
     }
     else
@@ -485,7 +378,6 @@ int main(void)
         PRINT("Last shutdown was OK.", NULL);
     }
 
-    
     PRINT("Posting Lux.", NULL);
     if (httpPostLux(&tcp, &persistant) != CLARITY_SUCCESS)
     {
@@ -512,7 +404,7 @@ int main(void)
 
     clarityShutdown();
     deinitialiseCC3000();
-#if 1
+
     while (1)
     {
         rtcRetrieve(&RTC_DRIVER, &time);
@@ -520,37 +412,14 @@ int main(void)
         chThdSleep(S2ST(1));
         palTogglePad(LED_PORT, LED_STATUS);
 
-#if 0
-        if (eepromRecordShutdown() != EEPROM_ERROR_OK)
-        {
-            PRINT_ERROR();
-        }
-#endif
-
-        configureRtcAlarmAndStandby(&RTC_DRIVER, 60);
+        configureRtcAlarmAndStandby(&RTC_DRIVER, STANDBY_TIME_S);
     }
-#endif
+
 #if 0
     if (clarityHttpServerStart(&controlInfo) != CLARITY_SUCCESS)
     {
         PRINT("Bugger...", NULL);
     }
-#endif
-#if 0
-    else if (test_client() != CLARITY_SUCCESS)
-    {
-        PRINT("Bugger...", NULL);
-    }
-#endif
-    
-#if 0
-    else if (updateRtcWithSntp() != 0)
-    {
-        PRINT("Bugger...", NULL);
-    }
-
-#endif
-#if 0
     PRINT("main sleeping", NULL);
 
     chThdSleep(S2ST(10));
@@ -570,8 +439,9 @@ int main(void)
     }
 
     PRINT("Shut down.", NULL)
-#endif
+
     while(1);
+#endif
 
     return 0;
 }
