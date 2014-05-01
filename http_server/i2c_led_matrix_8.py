@@ -83,16 +83,15 @@ def pattern_to_byte(pattern):
 def update_matrix():
     global MATRIX_PATTERN
     global CHIP
+    print("in update matrix:" + str(pattern_to_byte((MATRIX_PATTERN))))
     CHIP.registers.write_register(GPIOA, pattern_to_byte(MATRIX_PATTERN))
 
 def matrix_worker_thread():
     global MATRIX_THD_RUNNING
     global MATRIX_THD_LOCK
     while MATRIX_THD_RUNNING == True:
-        MATRIX_THD_LOCK.acquire()
         random_pattern(SCALED)
         update_matrix()
-        MATRIX_THD_LOCK.release()
         time.sleep(3)
 
 def matrix_start():
@@ -131,7 +130,7 @@ def random_pattern(normalised_8):
     global MATRIX_PATTERN
     global MATRIX_THD_LOCK
     random.seed()
-    pop = random.sample(range(8), normalised_8)
+    pop = random.sample(range(8), int(normalised_8))
     list = ["0"] * 64
     for p in pop:
         list[p] = "1"
