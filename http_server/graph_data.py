@@ -75,7 +75,9 @@ def get_graph_device(device):
 
 
 def show_graph_device_resource(device, resource):
-    get_graph_device_resource(device, resource).show()
+    plot = get_graph_device_resource(device, resource)
+    plot.savefig(config.DATA_DIR + "last_shown.png")
+    plot.show()
 
 def show_graph_device(device):
     get_graph_device(device).show()
@@ -88,20 +90,20 @@ def open_png_graph_device_resource(device,resource):
     png = buf.read()
     buf.close()
 
-    f = open(config.DATA_DIR + "last_png.png", "wb")
+    f = open(config.DATA_DIR + "last_opened.png", "wb")
     f.write(png)
     f.close()
 
     return png
 
-def open_png_graph_device(device):
-    plot = get_graph_device(device).show()
-    buf = io.BytesIO()
-    plot.savefig(buf, format = 'png')
-    buf.seek(0)
-    png = buf.read()
-    buf.close()
-    return buf
+#def open_png_graph_device(device):
+#    plot = get_graph_device(device).show()
+#    buf = io.BytesIO()
+#    plot.savefig(buf, format = 'png')
+#    buf.seek(0)
+#    png = buf.read()
+#    buf.close()
+#    return buf
 
 
 

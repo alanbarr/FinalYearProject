@@ -75,22 +75,20 @@ class Handler(BaseHTTPRequestHandler):
         else:
             units = "UNITS"
         log_data.write_measurement_to_csv(log_file, host, data, units)
+        return (data, units)
 
-    def handle_lux(self):
-        body_len = int(self.headers.get('content-length'))
-        body = self.rfile.read(body_len).decode().split()
-        if len(body) > 0:
-            i2c_led_matrix_8.update_scaled(int(body[0]))
+    def handle_lux(self, lux):
+        i2c_led_matrix_8.update_scaled(int(lux))
 
     def do_POST(self):
         path = self.path_to_local()
         f = self.get_file(path)
         #self.end_headers()
-        self.log_data(f)
+        (data, units) = self.log_data(f)
         self.close_file(f)
         self.send_response(OK, "OK")
         if config.USE_I2C_MATRIX == True and "lux" in path:
-            self.handle_lux()
+            self.handle_lux(data)
 
     def html_make_link(self,url,text):
         href_start = "<a href=\""
@@ -157,6 +155,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-length", str(len(png)))
             self.end_headers()
             self.wfile.write(png)
+            self.wfile.flush()
 
         # Get CSV
         elif os.path.isfile(config.DATA_DIR + self.path):

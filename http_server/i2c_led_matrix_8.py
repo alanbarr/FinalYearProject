@@ -42,8 +42,8 @@ CHIP = None
 
 CHIP_ADDR = 0x20
 
-MIN_SCALED = 0
-MAX_SCALED = 1
+MIN_SCALED = None
+MAX_SCALED = None
 SCALED = 0
 
 def update_scaled(value):
@@ -51,14 +51,24 @@ def update_scaled(value):
     global MAX_SCALED 
     global SCALED
 
-    if MIN_SCALED > value:
+    if MIN_SCALED is None:
         MIN_SCALED = value
-    if MAX_SCALED < value:
+    elif MIN_SCALED > value:
+        MIN_SCALED = value
+
+    if MAX_SCALED is None:
         MAX_SCALED = value
+    elif MAX_SCALED < value:
+        MAX_SCALED = value + 1
 
     division = (MAX_SCALED - MIN_SCALED) / 7
+    if int(division) == 0:
+        division = int(1)
+
     MATRIX_THD_LOCK.acquire()
     SCALED = int((value-MIN_SCALED) / division) + 1
+    if (SCALED > 8):
+        SCALED = 8
     MATRIX_THD_LOCK.release()
 
 def sleep_ms(t):
@@ -89,10 +99,8 @@ def matrix_worker_thread():
     global MATRIX_THD_RUNNING
     global MATRIX_THD_LOCK
     while MATRIX_THD_RUNNING == True:
-        MATRIX_THD_LOCK.acquire()
         random_pattern(SCALED)
         update_matrix()
-        MATRIX_THD_LOCK.release()
         time.sleep(3)
 
 def matrix_start():
@@ -131,7 +139,7 @@ def random_pattern(normalised_8):
     global MATRIX_PATTERN
     global MATRIX_THD_LOCK
     random.seed()
-    pop = random.sample(range(8), normalised_8)
+    pop = random.sample(range(8), int(normalised_8))
     list = ["0"] * 64
     for p in pop:
         list[p] = "1"
