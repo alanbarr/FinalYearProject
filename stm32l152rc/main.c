@@ -78,7 +78,8 @@ void debugPrint(const char * fmt, ...)
 static uint32_t httpGetRoot(const clarityHttpRequestInformation * info, 
                             clarityConnectionInformation * conn)
 {
-    static const char * rootStr = "Hello, World";
+    static const char * rootStr = "You are seeing this as a result of a GET "
+                                  "request on the root resource of this server.";
     uint32_t txBytes;
 
     (void)info;
@@ -236,7 +237,7 @@ static void cc3000Unresponsive(void)
 #endif
 
     eepromRecordUnresponsiveShutdown();
-    configureRtcAlarmAndStandby(&RTC_DRIVER, 60 * 15);
+    configureRtcAlarmAndStandby(&RTC_DRIVER, STANDBY_TIME_S);
 
 }
 
@@ -325,7 +326,7 @@ int main(void)
     tcp.type = CLARITY_TRANSPORT_TCP;
     tcp.addr.type = CLARITY_ADDRESS_URL;
     strncpy(tcp.addr.addr.url, SERVER_URL, CLARITY_MAX_URL_LENGTH);
-    tcp.port = SERIAL_PORT;
+    tcp.port = SERVER_PORT;
 
     PRINT("Starting...", NULL);
 
@@ -398,35 +399,17 @@ int main(void)
         PRINT_ERROR()
     }
 
-    clarityRegisterProcessFinished();
-
-    PRINT("Done.", NULL);
-
-    clarityShutdown();
-    deinitialiseCC3000();
-
-    while (1)
-    {
-        rtcRetrieve(&RTC_DRIVER, &time);
-
-        chThdSleep(S2ST(1));
-        palTogglePad(LED_PORT, LED_STATUS);
-
-        configureRtcAlarmAndStandby(&RTC_DRIVER, STANDBY_TIME_S);
-    }
 
 #if 0
     if (clarityHttpServerStart(&controlInfo) != CLARITY_SUCCESS)
     {
-        PRINT("Bugger...", NULL);
+        PRINT_ERROR();
     }
     PRINT("main sleeping", NULL);
 
     chThdSleep(S2ST(10));
 
     PRINT("Shutting down...", NULL)
-
-    clarityRegisterProcessFinished();
 
     if (clarityHttpServerStop() != CLARITY_SUCCESS)
     {
@@ -442,6 +425,14 @@ int main(void)
 
     while(1);
 #endif
+
+    clarityRegisterProcessFinished();
+    PRINT("Done.", NULL);
+
+    clarityShutdown();
+    deinitialiseCC3000();
+
+    configureRtcAlarmAndStandby(&RTC_DRIVER, STANDBY_TIME_S);
 
     return 0;
 }

@@ -56,9 +56,9 @@ def update_scaled(value):
     if MAX_SCALED < value:
         MAX_SCALED = value
 
-    division = (MAX_SCALED - MIN_SCALED) / 8
+    division = (MAX_SCALED - MIN_SCALED) / 7
     MATRIX_THD_LOCK.acquire()
-    SCALED = (value-MIN_SCALED) / division
+    SCALED = int((value-MIN_SCALED) / division) + 1
     MATRIX_THD_LOCK.release()
 
 def sleep_ms(t):
