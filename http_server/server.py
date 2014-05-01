@@ -78,9 +78,7 @@ class Handler(BaseHTTPRequestHandler):
         return (data, units)
 
     def handle_lux(self, lux):
-        print("lux was: " + str(lux))
         i2c_led_matrix_8.update_scaled(int(lux))
-        print("cont")
 
     def do_POST(self):
         path = self.path_to_local()
