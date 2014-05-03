@@ -43,6 +43,8 @@
 #define SERVER_PORT     9000
 #define STANDBY_TIME_S  60
 
+#define DEBUG_TIME_MEASURING  FALSE
+
 Mutex printMtx;
 static Mutex cc3000ApiMutex;
 static clarityHttpServerInformation controlInfo;
@@ -312,6 +314,11 @@ int main(void)
 
     chMtxInit(&printMtx);
 
+#if DEBUG_TIME_MEASURING == TRUE
+    rtcRetrieve(&RTC_DRIVER, &timingData);
+    PRINT("Finished. Minute: %d Seconds: %d", timingData.time.minute,  
+#endif
+
     initialiseDebugHw();
 
     initialiseCC3000();
@@ -388,7 +395,7 @@ int main(void)
     PRINT("Posting Temperature.", NULL);
     if (httpPostTemperature(&tcp, &persistant) != CLARITY_SUCCESS)
     {
-        PRINT_ERROR()
+        PRINT_ERROR();
     }
 
     persistant.closeOnComplete = true;
@@ -396,7 +403,7 @@ int main(void)
     PRINT("Posting Pressure.", NULL);
     if (httpPostPressure(&tcp, &persistant) != CLARITY_SUCCESS)
     {
-        PRINT_ERROR()
+        PRINT_ERROR();
     }
 
 

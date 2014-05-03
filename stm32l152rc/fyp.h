@@ -67,10 +67,10 @@ extern Mutex printMtx;
 
 void debugPrint(const char * fmt, ...);
 #define PRINT(fmt, ...)                                                     \
-        debugPrint("(%s:%d) " fmt "\n\r", __FILE__, __LINE__, __VA_ARGS__); \
+        debugPrint("(%s:%d) " fmt "\n\r", __FILE__, __LINE__, __VA_ARGS__)  
 
 #define PRINT_ERROR()                                                       \
-        debugPrint("(%s:%d) ERROR\n\r", __FILE__, __LINE__);                \
+        debugPrint("(%s:%d) ERROR\n\r", __FILE__, __LINE__)
 
 int32_t updateRtcWithSntp(void);
 void rtcRetrieve(RTCDriver * driver, clarityTimeDate * info);

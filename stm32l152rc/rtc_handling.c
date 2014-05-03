@@ -270,13 +270,13 @@ int32_t updateRtcWithSntp(void)
 
     if (clarityGetSntpTime(rxBuf, sizeof(rxBuf), &sntp) != CLARITY_SUCCESS)
     {
-        PRINT("Bugger...", NULL);
+        PRINT_ERROR();
         return 1;
     }
 
     else if (clarityTimeFromSntp(&clarTime, sntp) != CLARITY_SUCCESS)
     {
-        PRINT("Bugger...", NULL);
+        PRINT_ERROR();
         return 1;
     }
 
