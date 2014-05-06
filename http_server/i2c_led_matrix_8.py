@@ -66,7 +66,7 @@ def update_scaled(value):
         division = int(1)
 
     MATRIX_THD_LOCK.acquire()
-    SCALED = int((value-MIN_SCALED) / division) + 1
+    SCALED = int((MAX_SCALED-value) / division) + 1
     if (SCALED > 8):
         SCALED = 8
     MATRIX_THD_LOCK.release()
@@ -98,6 +98,7 @@ def update_matrix():
 def matrix_worker_thread():
     global MATRIX_THD_RUNNING
     global MATRIX_THD_LOCK
+    global SCALED
     while MATRIX_THD_RUNNING == True:
         random_pattern(SCALED)
         update_matrix()
