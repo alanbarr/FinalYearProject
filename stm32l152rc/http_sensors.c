@@ -64,29 +64,103 @@ void deinitialiseSensorHw(void)
 
 }
 
-uint32_t httpGetPressure(const clarityHttpRequestInformation * info, 
-                                clarityConnectionInformation * conn)
+static uint32_t getLuxStr(char *luxString)
 {
-    char pressureStr[PRESSURE_STRING_SIZE]; 
-    float temperature;
-    float pressure;
+    uint16_t lux = 0;
 
-    int32_t httpResponseSize;
-    msg_t i2cReturn;
-    (void)info;
+    spiAcquireBus(&CC3000_SPI_DRIVER);
+    i2cAcquireBus(&I2C_DRIVER);
+    i2cStart(&I2C_DRIVER, &i2cConfig);
 
-    if (RDY_OK != (i2cReturn = mplOneShotReadBarometer(&I2C_DRIVER,
-                                                       MPL3115A2_DEFAULT_ADDR,
-                                                       &pressure, 
-                                                       &temperature)))
+    if (RDY_OK != (tslReadLuxConvertSleep(&I2C_DRIVER,
+                                          TSL2561_ADDR_FLOAT,
+                                          &lux)))
+    {
+        PRINT("Error", NULL);
+    }
+
+    i2cStop(&I2C_DRIVER);
+    i2cReleaseBus(&I2C_DRIVER);
+    spiReleaseBus(&CC3000_SPI_DRIVER);
+ 
+    snprintf(luxString, LUX_STRING_SIZE, "%d lx", lux); 
+    luxString[LUX_STRING_SIZE-1] = 0;
+
+    return 0;
+}
+
+static uint32_t getTemperatureStr(char * temperatureStr)
+{
+
+    float temperature = 0;
+    float pressure = 0;
+
+    spiAcquireBus(&CC3000_SPI_DRIVER);
+    i2cAcquireBus(&I2C_DRIVER);
+    i2cStart(&I2C_DRIVER, &i2cConfig);
+
+    if (RDY_OK != mplOneShotReadBarometer(&I2C_DRIVER,
+                                          MPL3115A2_DEFAULT_ADDR,
+                                          &pressure, 
+                                          &temperature))
     {
         return 1;
     }
 
-    /* Prepare current pressure temp string */
-    pressure = pressure / 1000; /* Pa -> kPa */
-    snprintf(pressureStr, PRESSURE_STRING_SIZE-1, "%.2f kPa", pressure); 
-    pressureStr[PRESSURE_STRING_SIZE] = 0;
+
+    i2cStop(&I2C_DRIVER);
+    i2cReleaseBus(&I2C_DRIVER);
+    spiReleaseBus(&CC3000_SPI_DRIVER);
+ 
+    temperature += CELSIUS_TO_KELVIN;
+
+    snprintf(temperatureStr, TEMPERATURE_STRING_SIZE, "%.2f K", temperature); 
+    temperatureStr[TEMPERATURE_STRING_SIZE-1] = 0;
+
+
+    return 0;
+}
+
+
+static uint32_t getPressureStr(char * pressureStr)
+{
+
+    float pressure;
+    float temperature;
+
+    spiAcquireBus(&CC3000_SPI_DRIVER);
+    i2cAcquireBus(&I2C_DRIVER);
+    i2cStart(&I2C_DRIVER, &i2cConfig);
+
+    if (RDY_OK != mplOneShotReadBarometer(&I2C_DRIVER,
+                                          MPL3115A2_DEFAULT_ADDR,
+                                          &pressure, 
+                                          &temperature))
+    {
+        return 1;
+    }
+
+    i2cStop(&I2C_DRIVER);
+    i2cReleaseBus(&I2C_DRIVER);
+    spiReleaseBus(&CC3000_SPI_DRIVER);
+ 
+    pressure /= 1000; /* kPa */
+
+    snprintf(pressureStr, PRESSURE_STRING_SIZE, "%.2f kPa", pressure); 
+    pressureStr[PRESSURE_STRING_SIZE-1] = 0;
+
+    return 0;
+}
+
+
+uint32_t httpGetPressure(const clarityHttpRequestInformation * info, 
+                                clarityConnectionInformation * conn)
+{
+    char pressureStr[PRESSURE_STRING_SIZE]; 
+    int32_t httpResponseSize;
+    (void)info;
+
+    getPressureStr(pressureStr);
 
     httpResponseSize = clarityHttpBuildResponseTextPlain(httpResponse,
                                                  sizeof(httpResponse),
@@ -111,22 +185,9 @@ uint32_t httpGetTemperature(const clarityHttpRequestInformation * info,
     (void)conn;
 
     char temperatureStr[TEMPERATURE_STRING_SIZE]; 
-    float pressure;
-    float temperature;
-    msg_t i2cReturn;
     int32_t httpResponseSize;
 
-    if (RDY_OK != (i2cReturn = mplOneShotReadBarometer(&I2C_DRIVER,
-                                                       MPL3115A2_DEFAULT_ADDR,
-                                                       &pressure, 
-                                                       &temperature)))
-    {
-        return 1;
-    }
- 
-    /* Prepare current pressure temp string */
-    snprintf(temperatureStr, TEMPERATURE_STRING_SIZE-1, "%.2f K", temperature); 
-    temperatureStr[TEMPERATURE_STRING_SIZE-1] = 0;
+    getTemperatureStr(temperatureStr);
 
     httpResponseSize = clarityHttpBuildResponseTextPlain(httpResponse,
                                                  sizeof(httpResponse),
@@ -143,34 +204,17 @@ uint32_t httpGetTemperature(const clarityHttpRequestInformation * info,
     return 0;
 }
 
+
 uint32_t httpGetLux(const clarityHttpRequestInformation * info, 
                            clarityConnectionInformation * conn)
 {
     (void)info;
     (void)conn;
 
-    uint16_t lux;
     char luxString[LUX_STRING_SIZE];
     uint16_t httpResponseSize;
-    msg_t i2cReturn;
 
-    spiAcquireBus(&CC3000_SPI_DRIVER);
-    i2cAcquireBus(&I2C_DRIVER);
-
-    i2cStart(&I2C_DRIVER, &i2cConfig);
-    if (RDY_OK != (i2cReturn = tslReadLuxConvertSleep(&I2C_DRIVER,
-                                                      TSL2561_ADDR_FLOAT,
-                                                      &lux)))
-    {
-        PRINT("Error", NULL);
-    }
-
-    i2cStop(&I2C_DRIVER);
-    i2cReleaseBus(&I2C_DRIVER);
-    spiReleaseBus(&CC3000_SPI_DRIVER);
-  
-    snprintf(luxString, LUX_STRING_SIZE-1, "%d lx", lux); 
-    luxString[LUX_STRING_SIZE-1] = 0;
+    getLuxStr(luxString);
     
     httpResponseSize = clarityHttpBuildResponseTextPlain(httpResponse,
                                                          sizeof(httpResponse),
@@ -195,36 +239,14 @@ clarityError httpPostPressure(clarityTransportInformation * tcp,
     clarityError rtn;
     char buf[128];
     clarityHttpResponseInformation response;
-    float temperature = 0;
-    float pressure = 0;
     int16_t postLen = 0;
     char pressureStr[PRESSURE_STRING_SIZE];
-    msg_t i2cReturn;
 
     memset(buf, 0, sizeof(buf));
     memset(&response, 0, sizeof(response));
     memset(&pressureStr,0,sizeof(pressureStr));
 
-    spiAcquireBus(&CC3000_SPI_DRIVER);
-    i2cAcquireBus(&I2C_DRIVER);
-    i2cStart(&I2C_DRIVER, &i2cConfig);
-
-    if (RDY_OK != (i2cReturn = mplOneShotReadBarometer(&I2C_DRIVER,
-                                                       MPL3115A2_DEFAULT_ADDR,
-                                                       &pressure, 
-                                                       &temperature)))
-    {
-        return 1;
-    }
-
-    i2cStop(&I2C_DRIVER);
-    i2cReleaseBus(&I2C_DRIVER);
-    spiReleaseBus(&CC3000_SPI_DRIVER);
- 
-    pressure /= 1000; /* kPa */
-
-    snprintf(pressureStr, PRESSURE_STRING_SIZE, "%.2f kPa", pressure); 
-    pressureStr[PRESSURE_STRING_SIZE-1] = 0;
+    getPressureStr(pressureStr);
 
     postLen = clarityHttpBuildPost(buf, sizeof(buf), "/cc3000", "/pressure", 
                                    pressureStr, persistant);
@@ -250,37 +272,14 @@ clarityError httpPostTemperature(clarityTransportInformation * tcp,
     clarityError rtn;
     char buf[128];
     clarityHttpResponseInformation response;
-    float temperature = 0;
-    float pressure = 0;
     int16_t postLen = 0;
     char temperatureStr[TEMPERATURE_STRING_SIZE];
-    msg_t i2cReturn;
 
     memset(buf, 0, sizeof(buf));
     memset(&response, 0, sizeof(response));
     memset(temperatureStr, 0, sizeof(temperatureStr));
 
-    spiAcquireBus(&CC3000_SPI_DRIVER);
-    i2cAcquireBus(&I2C_DRIVER);
-    i2cStart(&I2C_DRIVER, &i2cConfig);
-
-    if (RDY_OK != (i2cReturn = mplOneShotReadBarometer(&I2C_DRIVER,
-                                                       MPL3115A2_DEFAULT_ADDR,
-                                                       &pressure, 
-                                                       &temperature)))
-    {
-        return 1;
-    }
-
-
-    i2cStop(&I2C_DRIVER);
-    i2cReleaseBus(&I2C_DRIVER);
-    spiReleaseBus(&CC3000_SPI_DRIVER);
- 
-    temperature += CELSIUS_TO_KELVIN;
-
-    snprintf(temperatureStr, TEMPERATURE_STRING_SIZE, "%.2f K", temperature); 
-    temperatureStr[TEMPERATURE_STRING_SIZE-1] = 0;
+    getTemperatureStr(temperatureStr);
 
     postLen = clarityHttpBuildPost(buf, sizeof(buf), "/cc3000", "/temperature", 
                                    temperatureStr, persistant);
@@ -305,7 +304,6 @@ clarityError httpPostLux(clarityTransportInformation * tcp,
     clarityError rtn;
     char buf[128];
     clarityHttpResponseInformation response;
-    uint16_t lux = 0;
     int16_t postLen = 0;
     char luxString[LUX_STRING_SIZE];
 
@@ -313,23 +311,7 @@ clarityError httpPostLux(clarityTransportInformation * tcp,
     memset(&response, 0, sizeof(response));
     memset(luxString,0,sizeof(luxString));
 
-    spiAcquireBus(&CC3000_SPI_DRIVER);
-    i2cAcquireBus(&I2C_DRIVER);
-    i2cStart(&I2C_DRIVER, &i2cConfig);
-
-    if (RDY_OK != (tslReadLuxConvertSleep(&I2C_DRIVER,
-                                          TSL2561_ADDR_FLOAT,
-                                          &lux)))
-    {
-        PRINT("Error", NULL);
-    }
-
-    i2cStop(&I2C_DRIVER);
-    i2cReleaseBus(&I2C_DRIVER);
-    spiReleaseBus(&CC3000_SPI_DRIVER);
- 
-    snprintf(luxString, LUX_STRING_SIZE, "%d lx", lux); 
-    luxString[LUX_STRING_SIZE-1] = 0;
+    getLuxStr(luxString);
 
     postLen = clarityHttpBuildPost(buf, sizeof(buf), "/cc3000", "/lux",
                                    luxString, persistant);

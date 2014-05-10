@@ -252,6 +252,9 @@ static void initialiseDebugHw(void)
     /* Led for error */
     palClearPad(LED_PORT, LED_ERROR);
     palSetPadMode(LED_PORT, LED_ERROR, PAL_MODE_OUTPUT_PUSHPULL);
+
+    /* Button for action */
+    palSetPadMode(BUTTON_PORT, BUTTON_PAD, PAL_MODE_INPUT);
  
     /* Serial for debugging */
     sdStart(&SERIAL_DRIVER, NULL);
@@ -316,7 +319,8 @@ int main(void)
 
 #if DEBUG_TIME_MEASURING == TRUE
     rtcRetrieve(&RTC_DRIVER, &timingData);
-    PRINT("Finished. Minute: %d Seconds: %d", timingData.time.minute,  
+    PRINT("Started. Minute: %d Seconds: %d", timingData.time.minute,  
+                                             timingData.time.seconds);
 #endif
 
     initialiseDebugHw();
@@ -337,12 +341,10 @@ int main(void)
 
     PRINT("Starting...", NULL);
 
-    if (clarityInit(&cc3000ApiMutex, cc3000Unresponsive, &ap, debugPrint) 
-            != CLARITY_SUCCESS)
-    {
+    if (clarityInit(&cc3000ApiMutex, cc3000Unresponsive, &ap, debugPrint) != CLARITY_SUCCESS) 
+    { 
         PRINT_ERROR();
     }
-
     clarityHttpPersistant persistant;
     memset(&persistant,0,sizeof(persistant));
     persistant.closeOnComplete = false;
@@ -406,38 +408,49 @@ int main(void)
         PRINT_ERROR();
     }
 
-
-#if 0
+#if 1
     if (clarityHttpServerStart(&controlInfo) != CLARITY_SUCCESS)
     {
         PRINT_ERROR();
     }
-    PRINT("main sleeping", NULL);
 
-    chThdSleep(S2ST(10));
+    while(1)
+    {
+        if (palReadPad(BUTTON_PORT, BUTTON_PAD))
+        {
+            break;
+        }
 
-    PRINT("Shutting down...", NULL)
+        PRINT("main sleeping", NULL);
+        chThdSleep(MS2ST(100));
+    }
+
+    PRINT("Shutting down...", NULL);
 
     if (clarityHttpServerStop() != CLARITY_SUCCESS)
     {
         PRINT("clarityHttpServerStop() failed", NULL);
     }
     
-    else if (clarityShutdown() != CLARITY_SUCCESS)
-    {
-        PRINT("clarityShutdown() failed", NULL);
-    }
-
-    PRINT("Shut down.", NULL)
-
-    while(1);
 #endif
 
     clarityRegisterProcessFinished();
     PRINT("Done.", NULL);
+ 
+    if (clarityShutdown() != CLARITY_SUCCESS)
+    {
+        PRINT("clarityShutdown() failed", NULL);
+    }
 
-    clarityShutdown();
+    PRINT("Shut down.", NULL);
+
     deinitialiseCC3000();
+
+#if DEBUG_TIME_MEASURING == TRUE
+    rtcRetrieve(&RTC_DRIVER, &timingData);
+    PRINT("Started. Minute: %d Seconds: %d", timingData.time.minute,  
+                                             timingData.time.seconds);
+#endif
 
     configureRtcAlarmAndStandby(&RTC_DRIVER, STANDBY_TIME_S);
 
