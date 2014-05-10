@@ -227,8 +227,6 @@ uint32_t httpGetLux(const clarityHttpRequestInformation * info,
         return 1;
     }
 
-    PRINT("Lux str is: %s\n", luxString);
-    
     return 0;
 }
 
